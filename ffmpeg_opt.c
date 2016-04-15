@@ -1255,7 +1255,11 @@ static OutputStream *new_output_stream(OptionsContext *o, AVFormatContext *oc, e
             bsfc_prev->next = bsfc;
         else
             ost->bitstream_filters = bsfc;
-        av_dict_set(&ost->bsf_args, bsfc->filter->name, arg, 0);
+        if (arg)
+            if (!(bsfc->args = av_strdup(arg))) {
+                av_log(NULL, AV_LOG_FATAL, "Bitstream filter memory allocation failed\n");
+                exit_program(1);
+            }
 
         bsfc_prev = bsfc;
         bsf       = next;
@@ -2354,6 +2358,72 @@ loop_end:
             }
         }
 
+    /* process manually set programs */
+    for (i = 0; i < o->nb_program; i++) {
+        const char *p = o->program[i].u.str;
+        int progid = i+1;
+        AVProgram *program;
+
+        while(*p) {
+            const char *p2 = av_get_token(&p, ":");
+            const char *to_dealloc = p2;
+            char *key;
+            if (!p2)
+                break;
+
+            if(*p) p++;
+
+            key = av_get_token(&p2, "=");
+            if (!key || !*p2) {
+                av_freep(&to_dealloc);
+                av_freep(&key);
+                break;
+            }
+            p2++;
+
+            if (!strcmp(key, "program_num"))
+                progid = strtol(p2, NULL, 0);
+            av_freep(&to_dealloc);
+            av_freep(&key);
+        }
+
+        program = av_new_program(oc, progid);
+
+        p = o->program[i].u.str;
+        while(*p) {
+            const char *p2 = av_get_token(&p, ":");
+            const char *to_dealloc = p2;
+            char *key;
+            if (!p2)
+                break;
+            if(*p) p++;
+
+            key = av_get_token(&p2, "=");
+            if (!key) {
+                av_log(NULL, AV_LOG_FATAL,
+                       "No '=' character in program string %s.\n",
+                       p2);
+                exit_program(1);
+            }
+            if (!*p2)
+                exit_program(1);
+            p2++;
+
+            if (!strcmp(key, "title")) {
+                av_dict_set(&program->metadata, "title", p2, 0);
+            } else if (!strcmp(key, "program_num")) {
+            } else if (!strcmp(key, "st")) {
+                int st_num = strtol(p2, NULL, 0);
+                av_program_add_stream_index(oc, progid, st_num);
+            } else {
+                av_log(NULL, AV_LOG_FATAL, "Unknown program key %s.\n", key);
+                exit_program(1);
+            }
+            av_freep(&to_dealloc);
+            av_freep(&key);
+        }
+    }
+
     /* process manually set metadata */
     for (i = 0; i < o->nb_metadata; i++) {
         AVDictionary **m;
@@ -2405,6 +2475,13 @@ loop_end:
                     exit_program(1);
                 }
                 m = &oc->chapters[index]->metadata;
+                break;
+            case 'p':
+                if (index < 0 || index >= oc->nb_programs) {
+                    av_log(NULL, AV_LOG_FATAL, "Invalid program index %d in metadata specifier.\n", index);
+                    exit_program(1);
+                }
+                m = &oc->programs[index]->metadata;
                 break;
             default:
                 av_log(NULL, AV_LOG_FATAL, "Invalid metadata specifier %s.\n", o->metadata[i].specifier);
@@ -3093,6 +3170,8 @@ const OptionDef options[] = {
         "set the recording timestamp ('now' to set the current time)", "time" },
     { "metadata",       HAS_ARG | OPT_STRING | OPT_SPEC | OPT_OUTPUT, { .off = OFFSET(metadata) },
         "add metadata", "string=string" },
+    { "program",        HAS_ARG | OPT_STRING | OPT_SPEC | OPT_OUTPUT, { .off = OFFSET(program) },
+        "add program with specified streams", "title=string:st=number..." },
     { "dframes",        HAS_ARG | OPT_PERFILE | OPT_EXPERT |
                         OPT_OUTPUT,                                  { .func_arg = opt_data_frames },
         "set the number of data frames to output", "number" },

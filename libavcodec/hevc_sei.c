@@ -78,11 +78,35 @@ static int decode_nal_sei_decoded_picture_hash(HEVCContext *s)
     return 0;
 }
 
+static int decode_nal_sei_mastering_display_info(HEVCContext *s)
+{
+    GetBitContext *gb = &s->HEVClc->gb;
+    int i;
+    // Mastering primaries
+    for (i = 0; i < 3; i++) {
+        s->display_primaries[i][0] = get_bits(gb, 16);
+        s->display_primaries[i][1] = get_bits(gb, 16);
+    }
+    // White point (x, y)
+    s->white_point[0] = get_bits(gb, 16);
+    s->white_point[1] = get_bits(gb, 16);
+
+    // Max and min luminance of mastering display
+    s->max_mastering_luminance = get_bits_long(gb, 32);
+    s->min_mastering_luminance = get_bits_long(gb, 32);
+
+    // As this SEI message comes before the first frame that references it,
+    // initialize the flag to 2 and decrement on IRAP access unit so it
+    // persists for the coded video sequence (e.g., between two IRAPs)
+    s->sei_mastering_display_info_present = 2;
+    return 0;
+}
+
 static int decode_nal_sei_frame_packing_arrangement(HEVCContext *s)
 {
     GetBitContext *gb = &s->HEVClc->gb;
 
-    get_ue_golomb(gb);                  // frame_packing_arrangement_id
+    get_ue_golomb_long(gb);             // frame_packing_arrangement_id
     s->sei_frame_packing_present = !get_bits1(gb);
 
     if (s->sei_frame_packing_present) {
@@ -151,7 +175,6 @@ static int decode_registered_user_data_closed_caption(HEVCContext *s, int size)
     int flag;
     int user_data_type_code;
     int cc_count;
-    int i;
 
     GetBitContext *gb = &s->HEVClc->gb;
 
@@ -170,20 +193,28 @@ static int decode_registered_user_data_closed_caption(HEVCContext *s, int size)
             size -= 2;
 
             if (cc_count && size >= cc_count * 3) {
-                av_freep(&s->a53_caption);
-                s->a53_caption_size = cc_count * 3;
+                const uint64_t new_size = (s->a53_caption_size + cc_count
+                                           * UINT64_C(3));
+                int i, ret;
 
-                s->a53_caption = av_malloc(s->a53_caption_size);
-                if (!s->a53_caption)
-                    return(AVERROR(ENOMEM));
+                if (new_size > INT_MAX)
+                    return AVERROR(EINVAL);
 
-                for (i = 0; i < s->a53_caption_size; i++) {
-                    s->a53_caption[i++] = get_bits(gb, 8);
+                /* Allow merging of the cc data from two fields. */
+                ret = av_reallocp(&s->a53_caption, new_size);
+                if (ret < 0)
+                    return ret;
+
+                for (i = 0; i < cc_count; i++) {
+                    s->a53_caption[s->a53_caption_size++] = get_bits(gb, 8);
+                    s->a53_caption[s->a53_caption_size++] = get_bits(gb, 8);
+                    s->a53_caption[s->a53_caption_size++] = get_bits(gb, 8);
                 }
                 skip_bits(gb, 8); // marker_bits
             }
         }
     } else {
+        int i;
         for (i = 0; i < size - 1; i++)
             skip_bits(gb, 8);
     }
@@ -271,6 +302,8 @@ static int decode_nal_sei_prefix(HEVCContext *s, int type, int size)
             skip_bits(gb, 8 * size);
             return ret;
         }
+    case SEI_TYPE_MASTERING_DISPLAY_INFO:
+        return decode_nal_sei_mastering_display_info(s);
     case SEI_TYPE_ACTIVE_PARAMETER_SETS:
         active_parameter_sets(s);
         av_log(s->avctx, AV_LOG_DEBUG, "Skipped PREFIX SEI %d\n", type);

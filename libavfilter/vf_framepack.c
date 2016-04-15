@@ -25,6 +25,7 @@
 
 #include <string.h>
 
+#include "libavutil/common.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
@@ -78,12 +79,12 @@ static av_cold void framepack_uninit(AVFilterContext *ctx)
 
 static int config_output(AVFilterLink *outlink)
 {
-    AVFilterContext *ctx = outlink->src;
-    FramepackContext *s  = outlink->src->priv;
+    AVFilterContext *ctx  = outlink->src;
+    FramepackContext *s   = outlink->src->priv;
 
-    int width            = ctx->inputs[LEFT]->w;
-    int height           = ctx->inputs[LEFT]->h;
-    AVRational time_base = ctx->inputs[LEFT]->time_base;
+    int width             = ctx->inputs[LEFT]->w;
+    int height            = ctx->inputs[LEFT]->h;
+    AVRational time_base  = ctx->inputs[LEFT]->time_base;
     AVRational frame_rate = ctx->inputs[LEFT]->frame_rate;
 
     // check size and fps match on the other input
@@ -117,7 +118,7 @@ static int config_output(AVFilterLink *outlink)
     // modify output properties as needed
     switch (s->format) {
     case AV_STEREO3D_FRAMESEQUENCE:
-        time_base.den *= 2;
+        time_base.den  *= 2;
         frame_rate.num *= 2;
 
         s->double_pts = AV_NOPTS_VALUE;
@@ -135,10 +136,10 @@ static int config_output(AVFilterLink *outlink)
         return AVERROR_INVALIDDATA;
     }
 
-    outlink->w         = width;
-    outlink->h         = height;
-    outlink->time_base = time_base;
-    outlink->frame_rate= frame_rate;
+    outlink->w          = width;
+    outlink->h          = height;
+    outlink->time_base  = time_base;
+    outlink->frame_rate = frame_rate;
 
     return 0;
 }
@@ -160,8 +161,8 @@ static void horizontal_frame_pack(AVFilterLink *outlink,
 
         for (plane = 0; plane < s->pix_desc->nb_components; plane++) {
             if (plane == 1 || plane == 2) {
-                length = FF_CEIL_RSHIFT(out->width / 2, s->pix_desc->log2_chroma_w);
-                lines  = FF_CEIL_RSHIFT(out->height,    s->pix_desc->log2_chroma_h);
+                length = AV_CEIL_RSHIFT(out->width / 2, s->pix_desc->log2_chroma_w);
+                lines  = AV_CEIL_RSHIFT(out->height,    s->pix_desc->log2_chroma_h);
             }
             for (i = 0; i < lines; i++) {
                 int j;

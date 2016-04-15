@@ -86,7 +86,8 @@ static int cache_open(URLContext *h, const char *arg, int flags, AVDictionary **
     unlink(buffername);
     av_freep(&buffername);
 
-    return ffurl_open(&c->inner, arg, flags, &h->interrupt_callback, options);
+    return ffurl_open_whitelist(&c->inner, arg, flags, &h->interrupt_callback,
+                                options, h->protocol_whitelist);
 }
 
 static int add_entry(URLContext *h, const unsigned char *buf, int size)
@@ -282,6 +283,12 @@ resolve_eof:
     return ret;
 }
 
+static int enu_free(void *opaque, void *elem)
+{
+    av_free(elem);
+    return 0;
+}
+
 static int cache_close(URLContext *h)
 {
     Context *c= h->priv_data;
@@ -291,6 +298,7 @@ static int cache_close(URLContext *h)
 
     close(c->fd);
     ffurl_close(c->inner);
+    av_tree_enumerate(c->root, NULL, NULL, enu_free);
     av_tree_destroy(c->root);
 
     return 0;

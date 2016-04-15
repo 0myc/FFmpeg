@@ -96,7 +96,7 @@ static double bessel(double x) {
         -1.2207067397808979846e+10,
          1.0377081058062166144e+07,
         -4.8527560179962773045e+03,
-         1.0L,
+         1.0,
     };
     static const double p2[] = {
         -2.2210262233306573296e-04,
@@ -115,7 +115,7 @@ static double bessel(double x) {
         -6.0228002066743340583e+01,
          8.5539563258012929600e+01,
         -3.1446690275135491500e+01,
-        1.0L,
+        1.0,
     };
     double y, r, factor;
     if (x == 0)
@@ -202,7 +202,7 @@ static int build_filter(ResampleContext *c, void *filter, double factor, int tap
         switch(c->format){
         case AV_SAMPLE_FMT_S16P:
             for(i=0;i<tap_count;i++)
-                ((int16_t*)filter)[ph * alloc + i] = av_clip(lrintf(tab[i] * scale / norm), INT16_MIN, INT16_MAX);
+                ((int16_t*)filter)[ph * alloc + i] = av_clip_int16(lrintf(tab[i] * scale / norm));
             if (tap_count % 2 == 0) {
                 for (i = 0; i < tap_count; i++)
                     ((int16_t*)filter)[(phase_count-ph) * alloc + tap_count-1-i] = ((int16_t*)filter)[ph * alloc + i];
@@ -210,7 +210,7 @@ static int build_filter(ResampleContext *c, void *filter, double factor, int tap
             else {
                 for (i = 1; i <= tap_count; i++)
                     ((int16_t*)filter)[(phase_count-ph) * alloc + tap_count-i] =
-                        av_clip(lrintf(tab[i] * scale / (norm - tab[0] + tab[tap_count])), INT16_MIN, INT16_MAX);
+                        av_clip_int16(lrintf(tab[i] * scale / (norm - tab[0] + tab[tap_count])));
             }
             break;
         case AV_SAMPLE_FMT_S32P:
@@ -355,6 +355,10 @@ static ResampleContext *resample_init(ResampleContext *c, int out_rate, int in_r
     c->compensation_distance= 0;
     if(!av_reduce(&c->src_incr, &c->dst_incr, out_rate, in_rate * (int64_t)phase_count, INT32_MAX/2))
         goto error;
+    while (c->dst_incr < (1<<20) && c->src_incr < (1<<20)) {
+        c->dst_incr *= 2;
+        c->src_incr *= 2;
+    }
     c->ideal_dst_incr = c->dst_incr;
     c->dst_incr_div   = c->dst_incr / c->src_incr;
     c->dst_incr_mod   = c->dst_incr % c->src_incr;

@@ -79,6 +79,7 @@ static inline av_const SoftFloat av_normalize1_sf(SoftFloat a){
         a.mant>>=1;
     }
     av_assert2(a.mant < 0x40000000 && a.mant > -0x40000000);
+    av_assert2(a.exp <= MAX_EXP);
     return a;
 #elif 1
     int t= a.mant + 0x40000000 < 0;
@@ -180,7 +181,7 @@ static av_always_inline SoftFloat av_sqrt_sf(SoftFloat val)
     if (val.mant == 0)
         val.exp = MIN_EXP;
     else if (val.mant < 0)
-        av_assert0(0);
+        abort();
     else
     {
         tabIndex = (val.mant - 0x20000000) >> 20;

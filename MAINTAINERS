@@ -71,6 +71,7 @@ Internal Interfaces:
   libavutil/common.h                    Michael Niedermayer
 
 Other:
+  aes_ctr.c, aes_ctr.h                  Eran Kornblau
   bprint                                Nicolas George
   bswap.h
   des                                   Reimar Doeffinger
@@ -164,6 +165,7 @@ Codecs:
   crystalhd.c                           Philip Langdale
   cscd.c                                Reimar Doeffinger
   dca.c                                 Kostya Shishkov, Benjamin Larsson
+  dirac*                                Rostislav Pehlivanov
   dnxhd*                                Baptiste Coudurier
   dpcm.c                                Mike Melanson
   dss_sp.c                              Oleksij Rempel, Michael Niedermayer
@@ -208,7 +210,7 @@ Codecs:
   libschroedinger*                      David Conrad
   libspeexdec.c                         Justin Ruggles
   libtheoraenc.c                        David Conrad
-  libutvideo*                           Derek Buitenhuis
+  libutvideo*                           Carl Eugen Hoyos
   libvorbis.c                           David Conrad
   libvpx*                               James Zern
   libx264.c                             Mans Rullgard, Jason Garrett-Glaser
@@ -274,6 +276,7 @@ Codecs:
   vb.c                                  Kostya Shishkov
   vble.c                                Derek Buitenhuis
   vc1*                                  Kostya Shishkov, Christophe Gisquet
+  vc2*                                  Rostislav Pehlivanov
   vcr1.c                                Michael Niedermayer
   vda_h264_dec.c                        Xidorn Quan
   vima.c                                Paul B Mahol
@@ -303,7 +306,6 @@ Codecs:
 Hardware acceleration:
   crystalhd.c                           Philip Langdale
   dxva2*                                Hendrik Leppkes, Laurent Aimar
-  libstagefright.cpp                    Mohamed Naufal
   vaapi*                                Gwenole Beauchesne
   vda*                                  Sebastien Zwickert
   vdpau*                                Philip Langdale, Carl Eugen Hoyos
@@ -458,6 +460,7 @@ Muxers/Demuxers:
   mm.c                                  Peter Ross
   mov.c                                 Michael Niedermayer, Baptiste Coudurier
   movenc.c                              Baptiste Coudurier, Matthieu Bouron
+  movenccenc.c                          Eran Kornblau
   mpc.c                                 Kostya Shishkov
   mpeg.c                                Michael Niedermayer
   mpegenc.c                             Michael Niedermayer
@@ -474,6 +477,7 @@ Muxers/Demuxers:
   oggdec.c, oggdec.h                    David Conrad
   oggenc.c                              Baptiste Coudurier
   oggparse*.c                           David Conrad
+  oggparsedaala*                        Rostislav Pehlivanov
   oma.c                                 Maxim Poliakovski
   paf.c                                 Paul B Mahol
   psxstr.c                              Mike Melanson
@@ -560,6 +564,7 @@ Windows ICL                             Matthew Oliver
 ADI/Blackfin DSP                        Marc Hoffman
 Sparc                                   Roman Shaposhnik
 x86                                     Michael Niedermayer
+OS/2                                    KO Myung-Hun
 
 
 Releases

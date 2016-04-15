@@ -4,6 +4,7 @@ NAME = avutil
 
 HEADERS = adler32.h                                                     \
           aes.h                                                         \
+          aes_ctr.h                                                     \
           attributes.h                                                  \
           audio_fifo.h                                                  \
           avassert.h                                                    \
@@ -37,6 +38,7 @@ HEADERS = adler32.h                                                     \
           log.h                                                         \
           macros.h                                                      \
           mathematics.h                                                 \
+          mastering_display_metadata.h                                  \
           md5.h                                                         \
           mem.h                                                         \
           motion_vector.h                                               \
@@ -80,6 +82,7 @@ BUILT_HEADERS = avconfig.h                                              \
 
 OBJS = adler32.o                                                        \
        aes.o                                                            \
+       aes_ctr.o                                                        \
        audio_fifo.o                                                     \
        avstring.o                                                       \
        base64.o                                                         \
@@ -106,12 +109,14 @@ OBJS = adler32.o                                                        \
        hash.o                                                           \
        hmac.o                                                           \
        imgutils.o                                                       \
+       integer.o                                                        \
        intmath.o                                                        \
        lfg.o                                                            \
        lls.o                                                            \
        log.o                                                            \
        log2_tab.o                                                       \
        mathematics.o                                                    \
+       mastering_display_metadata.o                                     \
        md5.o                                                            \
        mem.o                                                            \
        murmur3.o                                                        \

@@ -32,6 +32,8 @@ static int genh_probe(AVProbeData *p)
 {
     if (AV_RL32(p->buf) != MKTAG('G','E','N','H'))
         return 0;
+    if (AV_RL32(p->buf+4) <= 0 || AV_RL32(p->buf+4) > 0xFFFF) // channels
+        return 0;
 
     return AVPROBE_SCORE_MAX / 3 * 2;
 }
@@ -40,7 +42,7 @@ static int genh_read_header(AVFormatContext *s)
 {
     unsigned start_offset, header_size, codec, coef_type, coef[2];
     GENHDemuxContext *c = s->priv_data;
-    unsigned coef_splitted[2];
+    av_unused unsigned coef_splitted[2];
     int align, ch, ret;
     AVStream *st;
 

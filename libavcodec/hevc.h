@@ -622,7 +622,7 @@ typedef struct SliceHeader {
 
     unsigned int max_num_merge_cand; ///< 5 - 5_minus_max_num_merge_cand
 
-    int *entry_point_offset;
+    unsigned *entry_point_offset;
     int * offset;
     int * size;
     int num_entry_point_offsets;
@@ -940,6 +940,13 @@ typedef struct HEVCContext {
 
     uint8_t* a53_caption;
     int a53_caption_size;
+
+    /** mastering display */
+    int sei_mastering_display_info_present;
+    uint16_t display_primaries[3][2];
+    uint16_t white_point[2];
+    uint32_t max_mastering_luminance;
+    uint32_t min_mastering_luminance;
 
 } HEVCContext;
 

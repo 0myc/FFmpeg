@@ -89,6 +89,7 @@
 #include <inttypes.h>
 
 #include "libavutil/float_dsp.h"
+#include "libavutil/internal.h"
 #include "libavutil/intfloat.h"
 #include "libavutil/intreadwrite.h"
 #include "avcodec.h"
@@ -338,6 +339,12 @@ static av_cold int decode_init(AVCodecContext *avctx)
         s->decode_flags    = AV_RL16(edata_ptr+14);
         channel_mask       = AV_RL32(edata_ptr+2);
         s->bits_per_sample = AV_RL16(edata_ptr);
+
+        if (s->bits_per_sample > 32 || s->bits_per_sample < 1) {
+            avpriv_request_sample(avctx, "bits per sample is %d", s->bits_per_sample);
+            return AVERROR_PATCHWELCOME;
+        }
+
         /** dump the extradata */
         for (i = 0; i < avctx->extradata_size; i++)
             ff_dlog(avctx, "[%x] ", avctx->extradata[i]);
@@ -528,7 +535,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
     /** calculate subwoofer cutoff values */
     for (i = 0; i < num_possible_block_sizes; i++) {
         int block_size = s->samples_per_frame >> i;
-        int cutoff = (440*block_size + 3 * (s->avctx->sample_rate >> 1) - 1)
+        int cutoff = (440*block_size + 3LL * (s->avctx->sample_rate >> 1) - 1)
                      / s->avctx->sample_rate;
         s->subwoofer_cutoffs[i] = av_clip(cutoff, 4, block_size);
     }
@@ -1215,7 +1222,7 @@ static int decode_subframe(WMAProDecodeCtx *s)
         int num_fill_bits;
         if (!(num_fill_bits = get_bits(&s->gb, 2))) {
             int len = get_bits(&s->gb, 4);
-            num_fill_bits = (len ? get_bits(&s->gb, len) : 0) + 1;
+            num_fill_bits = get_bitsz(&s->gb, len) + 1;
         }
 
         if (num_fill_bits >= 0) {
@@ -1344,7 +1351,7 @@ static int decode_subframe(WMAProDecodeCtx *s)
                 const int exp = s->channel[c].quant_step -
                             (s->channel[c].max_scale_factor - *sf++) *
                             s->channel[c].scale_factor_step;
-                const float quant = pow(10.0, exp / 20.0);
+                const float quant = ff_exp10(exp / 20.0);
                 int start = s->cur_sfb_offsets[b];
                 s->fdsp->vector_fmul_scalar(s->tmp + start,
                                            s->channel[c].coeffs + start,
@@ -1612,7 +1619,7 @@ static int decode_packet(AVCodecContext *avctx, void *data,
 
         /** parse packet header */
         init_get_bits(gb, buf, s->buf_bit_size);
-        if (avctx->codec_id == AV_CODEC_ID_WMAPRO) {
+        if (avctx->codec_id != AV_CODEC_ID_XMA2) {
             packet_sequence_number = get_bits(gb, 4);
             skip_bits(gb, 2);
         } else {
@@ -1631,7 +1638,7 @@ static int decode_packet(AVCodecContext *avctx, void *data,
                 num_bits_prev_frame);
 
         /** check for packet loss */
-        if (avctx->codec_id == AV_CODEC_ID_WMAPRO && !s->packet_loss &&
+        if (avctx->codec_id != AV_CODEC_ID_XMA2 && !s->packet_loss &&
             ((s->packet_sequence_number + 1) & 0xF) != packet_sequence_number) {
             s->packet_loss = 1;
             av_log(avctx, AV_LOG_ERROR,
@@ -1692,6 +1699,11 @@ static int decode_packet(AVCodecContext *avctx, void *data,
             s->packet_done = !decode_frame(s, data, got_frame_ptr);
         } else
             s->packet_done = 1;
+    }
+
+    if (remaining_bits(s, gb) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "Overread %d\n", -remaining_bits(s, gb));
+        s->packet_loss = 1;
     }
 
     if (s->packet_done && !s->packet_loss &&

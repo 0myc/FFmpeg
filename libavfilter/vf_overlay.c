@@ -245,30 +245,38 @@ static int query_formats(AVFilterContext *ctx)
         AV_PIX_FMT_NONE
     };
 
-    AVFilterFormats *main_formats;
-    AVFilterFormats *overlay_formats;
+    AVFilterFormats *main_formats = NULL;
+    AVFilterFormats *overlay_formats = NULL;
     int ret;
 
     switch (s->format) {
     case OVERLAY_FORMAT_YUV420:
         if (!(main_formats    = ff_make_format_list(main_pix_fmts_yuv420)) ||
-            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_yuv420)))
-            return AVERROR(ENOMEM);
+            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_yuv420))) {
+                ret = AVERROR(ENOMEM);
+                goto fail;
+            }
         break;
     case OVERLAY_FORMAT_YUV422:
         if (!(main_formats    = ff_make_format_list(main_pix_fmts_yuv422)) ||
-            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_yuv422)))
-            return AVERROR(ENOMEM);
+            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_yuv422))) {
+                ret = AVERROR(ENOMEM);
+                goto fail;
+            }
         break;
     case OVERLAY_FORMAT_YUV444:
         if (!(main_formats    = ff_make_format_list(main_pix_fmts_yuv444)) ||
-            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_yuv444)))
-            return AVERROR(ENOMEM);
+            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_yuv444))) {
+                ret = AVERROR(ENOMEM);
+                goto fail;
+            }
         break;
     case OVERLAY_FORMAT_RGB:
         if (!(main_formats    = ff_make_format_list(main_pix_fmts_rgb)) ||
-            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_rgb)))
-            return AVERROR(ENOMEM);
+            !(overlay_formats = ff_make_format_list(overlay_pix_fmts_rgb))) {
+                ret = AVERROR(ENOMEM);
+                goto fail;
+            }
         break;
     default:
         av_assert0(0);
@@ -277,9 +285,17 @@ static int query_formats(AVFilterContext *ctx)
     if ((ret = ff_formats_ref(main_formats   , &ctx->inputs[MAIN]->out_formats   )) < 0 ||
         (ret = ff_formats_ref(overlay_formats, &ctx->inputs[OVERLAY]->out_formats)) < 0 ||
         (ret = ff_formats_ref(main_formats   , &ctx->outputs[MAIN]->in_formats   )) < 0)
-        return ret;
+            goto fail;
 
     return 0;
+fail:
+    if (main_formats)
+        av_freep(&main_formats->formats);
+    av_freep(&main_formats);
+    if (overlay_formats)
+        av_freep(&overlay_formats->formats);
+    av_freep(&overlay_formats);
+    return ret;
 }
 
 static const enum AVPixelFormat alpha_pix_fmts[] = {
@@ -504,10 +520,10 @@ static void blend_image(AVFilterContext *ctx,
         for (i = 0; i < 3; i++) {
             int hsub = i ? s->hsub : 0;
             int vsub = i ? s->vsub : 0;
-            int src_wp = FF_CEIL_RSHIFT(src_w, hsub);
-            int src_hp = FF_CEIL_RSHIFT(src_h, vsub);
-            int dst_wp = FF_CEIL_RSHIFT(dst_w, hsub);
-            int dst_hp = FF_CEIL_RSHIFT(dst_h, vsub);
+            int src_wp = AV_CEIL_RSHIFT(src_w, hsub);
+            int src_hp = AV_CEIL_RSHIFT(src_h, vsub);
+            int dst_wp = AV_CEIL_RSHIFT(dst_w, hsub);
+            int dst_hp = AV_CEIL_RSHIFT(dst_h, vsub);
             int yp = y>>vsub;
             int xp = x>>hsub;
             uint8_t *s, *sp, *d, *dp, *a, *ap;
@@ -582,6 +598,11 @@ static AVFrame *do_blend(AVFilterContext *ctx, AVFrame *mainpic,
         s->var_values[VAR_T] = mainpic->pts == AV_NOPTS_VALUE ?
             NAN : mainpic->pts * av_q2d(inlink->time_base);
         s->var_values[VAR_POS] = pos == -1 ? NAN : pos;
+
+        s->var_values[VAR_OVERLAY_W] = s->var_values[VAR_OW] = second->width;
+        s->var_values[VAR_OVERLAY_H] = s->var_values[VAR_OH] = second->height;
+        s->var_values[VAR_MAIN_W   ] = s->var_values[VAR_MW] = mainpic->width;
+        s->var_values[VAR_MAIN_H   ] = s->var_values[VAR_MH] = mainpic->height;
 
         eval_expr(ctx);
         av_log(ctx, AV_LOG_DEBUG, "n:%f t:%f pos:%f x:%f xi:%d y:%f yi:%d\n",

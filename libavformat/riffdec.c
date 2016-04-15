@@ -89,7 +89,7 @@ int ff_get_wav_header(AVFormatContext *s, AVIOContext *pb,
                       AVCodecContext *codec, int size, int big_endian)
 {
     int id;
-    uint64_t bitrate;
+    uint64_t bitrate = 0;
 
     if (size < 14) {
         avpriv_request_sample(codec, "wav header size < 14");
@@ -168,21 +168,7 @@ int ff_get_wav_header(AVFormatContext *s, AVIOContext *pb,
             codec->channels += codec->extradata[8 + i * 20 + 17];
     }
 
-    if (bitrate > INT_MAX) {
-        if (s->error_recognition & AV_EF_EXPLODE) {
-            av_log(s, AV_LOG_ERROR,
-                   "The bitrate %"PRIu64" is too large.\n",
-                    bitrate);
-            return AVERROR_INVALIDDATA;
-        } else {
-            av_log(s, AV_LOG_WARNING,
-                   "The bitrate %"PRIu64" is too large, resetting to 0.",
-                   bitrate);
-            codec->bit_rate = 0;
-        }
-    } else {
-        codec->bit_rate = bitrate;
-    }
+    codec->bit_rate = bitrate;
 
     if (codec->sample_rate <= 0) {
         av_log(s, AV_LOG_ERROR,
@@ -293,6 +279,9 @@ int ff_read_riff_info(AVFormatContext *s, int64_t size)
         }
 
         AV_WL32(key, chunk_code);
+        // Work around VC++ 2015 Update 1 code-gen bug:
+        // https://connect.microsoft.com/VisualStudio/feedback/details/2291638
+        key[4] = 0;
 
         if (avio_read(pb, value, chunk_size) != chunk_size) {
             av_log(s, AV_LOG_WARNING,

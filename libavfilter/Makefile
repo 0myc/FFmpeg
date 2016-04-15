@@ -17,15 +17,20 @@ OBJS = allfilters.o                                                     \
        drawutils.o                                                      \
        fifo.o                                                           \
        formats.o                                                        \
+       framepool.o                                                      \
        graphdump.o                                                      \
        graphparser.o                                                    \
        opencl_allkernels.o                                              \
        transform.o                                                      \
        video.o                                                          \
 
+OBJS-$(CONFIG_ACOMPRESSOR_FILTER)            += af_sidechaincompress.o
 OBJS-$(CONFIG_ACROSSFADE_FILTER)             += af_afade.o
 OBJS-$(CONFIG_ADELAY_FILTER)                 += af_adelay.o
 OBJS-$(CONFIG_AECHO_FILTER)                  += af_aecho.o
+OBJS-$(CONFIG_AEMPHASIS_FILTER)              += af_aemphasis.o
+OBJS-$(CONFIG_AFFTFILT_FILTER)               += af_afftfilt.o window_func.o
+OBJS-$(CONFIG_ANEQUALIZER_FILTER)            += af_anequalizer.o
 OBJS-$(CONFIG_AEVAL_FILTER)                  += aeval.o
 OBJS-$(CONFIG_AFADE_FILTER)                  += af_afade.o
 OBJS-$(CONFIG_AFORMAT_FILTER)                += af_aformat.o
@@ -34,11 +39,13 @@ OBJS-$(CONFIG_AINTERLEAVE_FILTER)            += f_interleave.o
 OBJS-$(CONFIG_ALIMITER_FILTER)               += af_alimiter.o
 OBJS-$(CONFIG_ALLPASS_FILTER)                += af_biquads.o
 OBJS-$(CONFIG_AMERGE_FILTER)                 += af_amerge.o
+OBJS-$(CONFIG_AMETADATA_FILTER)              += f_metadata.o
 OBJS-$(CONFIG_AMIX_FILTER)                   += af_amix.o
 OBJS-$(CONFIG_ANULL_FILTER)                  += af_anull.o
 OBJS-$(CONFIG_APAD_FILTER)                   += af_apad.o
 OBJS-$(CONFIG_APERMS_FILTER)                 += f_perms.o
 OBJS-$(CONFIG_APHASER_FILTER)                += af_aphaser.o generate_wave_table.o
+OBJS-$(CONFIG_APULSATOR_FILTER)              += af_apulsator.o
 OBJS-$(CONFIG_AREALTIME_FILTER)              += f_realtime.o
 OBJS-$(CONFIG_ARESAMPLE_FILTER)              += af_aresample.o
 OBJS-$(CONFIG_AREVERSE_FILTER)               += f_reverse.o
@@ -51,6 +58,7 @@ OBJS-$(CONFIG_ASETTB_FILTER)                 += settb.o
 OBJS-$(CONFIG_ASHOWINFO_FILTER)              += af_ashowinfo.o
 OBJS-$(CONFIG_ASPLIT_FILTER)                 += split.o
 OBJS-$(CONFIG_ASTATS_FILTER)                 += af_astats.o
+OBJS-$(CONFIG_ASTREAMSELECT_FILTER)          += f_streamselect.o
 OBJS-$(CONFIG_ASYNCTS_FILTER)                += af_asyncts.o
 OBJS-$(CONFIG_ATEMPO_FILTER)                 += af_atempo.o
 OBJS-$(CONFIG_ATRIM_FILTER)                  += trim.o
@@ -64,6 +72,7 @@ OBJS-$(CONFIG_CHANNELMAP_FILTER)             += af_channelmap.o
 OBJS-$(CONFIG_CHANNELSPLIT_FILTER)           += af_channelsplit.o
 OBJS-$(CONFIG_CHORUS_FILTER)                 += af_chorus.o generate_wave_table.o
 OBJS-$(CONFIG_COMPAND_FILTER)                += af_compand.o
+OBJS-$(CONFIG_COMPENSATIONDELAY_FILTER)      += af_compensationdelay.o
 OBJS-$(CONFIG_DCSHIFT_FILTER)                += af_dcshift.o
 OBJS-$(CONFIG_DYNAUDNORM_FILTER)             += af_dynaudnorm.o
 OBJS-$(CONFIG_EARWAX_FILTER)                 += af_earwax.o
@@ -80,8 +89,10 @@ OBJS-$(CONFIG_REPLAYGAIN_FILTER)             += af_replaygain.o
 OBJS-$(CONFIG_RESAMPLE_FILTER)               += af_resample.o
 OBJS-$(CONFIG_RUBBERBAND_FILTER)             += af_rubberband.o
 OBJS-$(CONFIG_SIDECHAINCOMPRESS_FILTER)      += af_sidechaincompress.o
+OBJS-$(CONFIG_SIDECHAINGATE_FILTER)          += af_agate.o
 OBJS-$(CONFIG_SILENCEDETECT_FILTER)          += af_silencedetect.o
 OBJS-$(CONFIG_SILENCEREMOVE_FILTER)          += af_silenceremove.o
+OBJS-$(CONFIG_SOFALIZER_FILTER)              += af_sofalizer.o
 OBJS-$(CONFIG_STEREOTOOLS_FILTER)            += af_stereotools.o
 OBJS-$(CONFIG_STEREOWIDEN_FILTER)            += af_stereowiden.o
 OBJS-$(CONFIG_TREBLE_FILTER)                 += af_biquads.o
@@ -114,6 +125,7 @@ OBJS-$(CONFIG_COLORCHANNELMIXER_FILTER)      += vf_colorchannelmixer.o
 OBJS-$(CONFIG_COLORKEY_FILTER)               += vf_colorkey.o
 OBJS-$(CONFIG_COLORLEVELS_FILTER)            += vf_colorlevels.o
 OBJS-$(CONFIG_COLORMATRIX_FILTER)            += vf_colormatrix.o
+OBJS-$(CONFIG_CONVOLUTION_FILTER)            += vf_convolution.o
 OBJS-$(CONFIG_COPY_FILTER)                   += vf_copy.o
 OBJS-$(CONFIG_COVER_RECT_FILTER)             += vf_cover_rect.o lavfutils.o
 OBJS-$(CONFIG_CROP_FILTER)                   += vf_crop.o
@@ -175,8 +187,10 @@ OBJS-$(CONFIG_LUTYUV_FILTER)                 += vf_lut.o
 OBJS-$(CONFIG_MASKEDMERGE_FILTER)            += vf_maskedmerge.o framesync.o
 OBJS-$(CONFIG_MCDEINT_FILTER)                += vf_mcdeint.o
 OBJS-$(CONFIG_MERGEPLANES_FILTER)            += vf_mergeplanes.o framesync.o
+OBJS-$(CONFIG_METADATA_FILTER)               += f_metadata.o
 OBJS-$(CONFIG_MPDECIMATE_FILTER)             += vf_mpdecimate.o
 OBJS-$(CONFIG_NEGATE_FILTER)                 += vf_lut.o
+OBJS-$(CONFIG_NNEDI_FILTER)                  += vf_nnedi.o
 OBJS-$(CONFIG_NOFORMAT_FILTER)               += vf_format.o
 OBJS-$(CONFIG_NOISE_FILTER)                  += vf_noise.o
 OBJS-$(CONFIG_NULL_FILTER)                   += vf_null.o
@@ -227,8 +241,10 @@ OBJS-$(CONFIG_SPLIT_FILTER)                  += split.o
 OBJS-$(CONFIG_SPP_FILTER)                    += vf_spp.o
 OBJS-$(CONFIG_SSIM_FILTER)                   += vf_ssim.o dualinput.o framesync.o
 OBJS-$(CONFIG_STEREO3D_FILTER)               += vf_stereo3d.o
+OBJS-$(CONFIG_STREAMSELECT_FILTER)           += f_streamselect.o
 OBJS-$(CONFIG_SUBTITLES_FILTER)              += vf_subtitles.o
 OBJS-$(CONFIG_SUPER2XSAI_FILTER)             += vf_super2xsai.o
+OBJS-$(CONFIG_SWAPRECT_FILTER)               += vf_swaprect.o
 OBJS-$(CONFIG_SWAPUV_FILTER)                 += vf_swapuv.o
 OBJS-$(CONFIG_TBLEND_FILTER)                 += vf_blend.o dualinput.o framesync.o
 OBJS-$(CONFIG_TELECINE_FILTER)               += vf_telecine.o
@@ -273,15 +289,18 @@ OBJS-$(CONFIG_NULLSINK_FILTER)               += vsink_nullsink.o
 
 # multimedia filters
 OBJS-$(CONFIG_ADRAWGRAPH_FILTER)             += f_drawgraph.o
+OBJS-$(CONFIG_AHISTOGRAM_FILTER)             += avf_ahistogram.o
 OBJS-$(CONFIG_APHASEMETER_FILTER)            += avf_aphasemeter.o
 OBJS-$(CONFIG_AVECTORSCOPE_FILTER)           += avf_avectorscope.o
 OBJS-$(CONFIG_CONCAT_FILTER)                 += avf_concat.o
 OBJS-$(CONFIG_SHOWCQT_FILTER)                += avf_showcqt.o lswsutils.o lavfutils.o
-OBJS-$(CONFIG_SHOWFREQS_FILTER)              += avf_showfreqs.o
-OBJS-$(CONFIG_SHOWSPECTRUM_FILTER)           += avf_showspectrum.o
+OBJS-$(CONFIG_SHOWFREQS_FILTER)              += avf_showfreqs.o window_func.o
+OBJS-$(CONFIG_SHOWSPECTRUM_FILTER)           += avf_showspectrum.o window_func.o
+OBJS-$(CONFIG_SHOWSPECTRUMPIC_FILTER)        += avf_showspectrum.o window_func.o
 OBJS-$(CONFIG_SHOWVOLUME_FILTER)             += avf_showvolume.o
 OBJS-$(CONFIG_SHOWWAVES_FILTER)              += avf_showwaves.o
 OBJS-$(CONFIG_SHOWWAVESPIC_FILTER)           += avf_showwaves.o
+OBJS-$(CONFIG_SPECTRUMSYNTH_FILTER)          += vaf_spectrumsynth.o window_func.o
 
 # multimedia sources
 OBJS-$(CONFIG_AMOVIE_FILTER)                 += src_movie.o

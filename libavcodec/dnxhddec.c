@@ -118,6 +118,11 @@ static int dnxhd_init_vlc(DNXHDContext *ctx, uint32_t cid, int bitdepth)
             av_log(ctx->avctx, AV_LOG_ERROR, "bit depth mismatches %d %d\n", ff_dnxhd_cid_table[index].bit_depth, bitdepth);
             return AVERROR_INVALIDDATA;
         }
+        if (bitdepth > 10) {
+            avpriv_request_sample(ctx->avctx, "DNXHR 12-bit");
+            if (ctx->avctx->strict_std_compliance > FF_COMPLIANCE_EXPERIMENTAL)
+                return AVERROR_PATCHWELCOME;
+        }
         ctx->cid_table = &ff_dnxhd_cid_table[index];
         av_log(ctx->avctx, AV_LOG_VERBOSE, "Profile cid %d.\n", cid);
 
@@ -158,21 +163,17 @@ static int dnxhd_decode_header(DNXHDContext *ctx, AVFrame *frame,
                                const uint8_t *buf, int buf_size,
                                int first_field)
 {
-    static const uint8_t header_prefix[]    = { 0x00, 0x00, 0x02, 0x80, 0x01 };
-    static const uint8_t header_prefix444[] = { 0x00, 0x00, 0x02, 0x80, 0x02 };
-    static const uint8_t header_prefixhr1[] = { 0x00, 0x00, 0x02, 0x80, 0x03 };
-    static const uint8_t header_prefixhr2[] = { 0x00, 0x00, 0x03, 0x8C, 0x03 };
     int i, cid, ret;
     int old_bit_depth = ctx->bit_depth, bitdepth;
-
+    uint64_t header_prefix;
     if (buf_size < 0x280) {
         av_log(ctx->avctx, AV_LOG_ERROR,
                "buffer too small (%d < 640).\n", buf_size);
         return AVERROR_INVALIDDATA;
     }
 
-    if (memcmp(buf, header_prefix, 5) && memcmp(buf, header_prefix444, 5) &&
-        memcmp(buf, header_prefixhr1, 5) && memcmp(buf, header_prefixhr2, 5)) {
+    header_prefix = avpriv_dnxhd_parse_header_prefix(buf);
+    if (header_prefix == 0) {
         av_log(ctx->avctx, AV_LOG_ERROR,
                "unknown header 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
                buf[0], buf[1], buf[2], buf[3], buf[4]);
@@ -274,7 +275,7 @@ static int dnxhd_decode_header(DNXHDContext *ctx, AVFrame *frame,
            ctx->bit_depth, ctx->mbaff, ctx->act);
 
     // Newer format supports variable mb_scan_index sizes
-    if (!memcmp(buf, header_prefixhr2, 5)) {
+    if (header_prefix == DNXHD_HEADER_HR2) {
         ctx->data_offset = 0x170 + (ctx->mb_height << 2);
     } else {
         if (ctx->mb_height > 68 ||
@@ -356,7 +357,7 @@ static av_always_inline int dnxhd_decode_dct_block(const DNXHDContext *ctx,
         LAST_SKIP_BITS(bs, &row->gb, len);
         sign  = ~level >> 31;
         level = (NEG_USR32(sign ^ level, len) ^ sign) - sign;
-        row->last_dc[component] += level << dc_shift;
+        row->last_dc[component] += level * (1 << dc_shift);
     }
     block[0] = row->last_dc[component];
 

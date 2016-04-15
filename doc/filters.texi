@@ -318,6 +318,81 @@ build.
 
 Below is a description of the currently available audio filters.
 
+@section acompressor
+
+A compressor is mainly used to reduce the dynamic range of a signal.
+Especially modern music is mostly compressed at a high ratio to
+improve the overall loudness. It's done to get the highest attention
+of a listener, "fatten" the sound and bring more "power" to the track.
+If a signal is compressed too much it may sound dull or "dead"
+afterwards or it may start to "pump" (which could be a powerful effect
+but can also destroy a track completely).
+The right compression is the key to reach a professional sound and is
+the high art of mixing and mastering. Because of its complex settings
+it may take a long time to get the right feeling for this kind of effect.
+
+Compression is done by detecting the volume above a chosen level
+@code{threshold} and dividing it by the factor set with @code{ratio}.
+So if you set the threshold to -12dB and your signal reaches -6dB a ratio
+of 2:1 will result in a signal at -9dB. Because an exact manipulation of
+the signal would cause distortion of the waveform the reduction can be
+levelled over the time. This is done by setting "Attack" and "Release".
+@code{attack} determines how long the signal has to rise above the threshold
+before any reduction will occur and @code{release} sets the time the signal
+has to fall below the threshold to reduce the reduction again. Shorter signals
+than the chosen attack time will be left untouched.
+The overall reduction of the signal can be made up afterwards with the
+@code{makeup} setting. So compressing the peaks of a signal about 6dB and
+raising the makeup to this level results in a signal twice as loud than the
+source. To gain a softer entry in the compression the @code{knee} flattens the
+hard edge at the threshold in the range of the chosen decibels.
+
+The filter accepts the following options:
+
+@table @option
+@item level_in
+Set input gain. Default is 1. Range is between 0.015625 and 64.
+
+@item threshold
+If a signal of second stream rises above this level it will affect the gain
+reduction of the first stream.
+By default it is 0.125. Range is between 0.00097563 and 1.
+
+@item ratio
+Set a ratio by which the signal is reduced. 1:2 means that if the level
+rose 4dB above the threshold, it will be only 2dB above after the reduction.
+Default is 2. Range is between 1 and 20.
+
+@item attack
+Amount of milliseconds the signal has to rise above the threshold before gain
+reduction starts. Default is 20. Range is between 0.01 and 2000.
+
+@item release
+Amount of milliseconds the signal has to fall below the threshold before
+reduction is decreased again. Default is 250. Range is between 0.01 and 9000.
+
+@item makeup
+Set the amount by how much signal will be amplified after processing.
+Default is 2. Range is from 1 and 64.
+
+@item knee
+Curve the sharp knee around the threshold to enter gain reduction more softly.
+Default is 2.82843. Range is between 1 and 8.
+
+@item link
+Choose if the @code{average} level between all channels of input stream
+or the louder(@code{maximum}) channel of input stream affects the
+reduction. Default is @code{average}.
+
+@item detection
+Should the exact signal be taken in case of @code{peak} or an RMS one in case
+of @code{rms}. Default is @code{rms} which is mostly smoother.
+
+@item mix
+How much to use compressed signal in output. Default is 1.
+Range is between 0 and 1.
+@end table
+
 @section acrossfade
 
 Apply cross fade from one input audio stream to another input audio stream.
@@ -452,6 +527,52 @@ Same as above but with one more mountain:
 aecho=0.8:0.9:1000|1800:0.3|0.25
 @end example
 @end itemize
+
+@section aemphasis
+Audio emphasis filter creates or restores material directly taken from LPs or
+emphased CDs with different filter curves. E.g. to store music on vinyl the
+signal has to be altered by a filter first to even out the disadvantages of
+this recording medium.
+Once the material is played back the inverse filter has to be applied to
+restore the distortion of the frequency response.
+
+The filter accepts the following options:
+
+@table @option
+@item level_in
+Set input gain.
+
+@item level_out
+Set output gain.
+
+@item mode
+Set filter mode. For restoring material use @code{reproduction} mode, otherwise
+use @code{production} mode. Default is @code{reproduction} mode.
+
+@item type
+Set filter type. Selects medium. Can be one of the following:
+
+@table @option
+@item col
+select Columbia.
+@item emi
+select EMI.
+@item bsi
+select BSI (78RPM).
+@item riaa
+select RIAA.
+@item cd
+select Compact Disc (CD).
+@item 50fm
+select 50µs (FM).
+@item 75fm
+select 75µs (FM).
+@item 50kf
+select 50µs (FM-KF).
+@item 75kf
+select 75µs (FM-KF).
+@end table
+@end table
 
 @section aeval
 
@@ -612,6 +733,83 @@ afade=t=out:st=875:d=25
 @end example
 @end itemize
 
+@section afftfilt
+Apply arbitrary expressions to samples in frequency domain.
+
+@table @option
+@item real
+Set frequency domain real expression for each separate channel separated
+by '|'. Default is "1".
+If the number of input channels is greater than the number of
+expressions, the last specified expression is used for the remaining
+output channels.
+
+@item imag
+Set frequency domain imaginary expression for each separate channel
+separated by '|'. If not set, @var{real} option is used.
+
+Each expression in @var{real} and @var{imag} can contain the following
+constants:
+
+@table @option
+@item sr
+sample rate
+
+@item b
+current frequency bin number
+
+@item nb
+number of available bins
+
+@item ch
+channel number of the current expression
+
+@item chs
+number of channels
+
+@item pts
+current frame pts
+@end table
+
+@item win_size
+Set window size.
+
+It accepts the following values:
+@table @samp
+@item w16
+@item w32
+@item w64
+@item w128
+@item w256
+@item w512
+@item w1024
+@item w2048
+@item w4096
+@item w8192
+@item w16384
+@item w32768
+@item w65536
+@end table
+Default is @code{w4096}
+
+@item win_func
+Set window function. Default is @code{hann}.
+
+@item overlap
+Set window overlap. If set to 1, the recommended overlap for selected
+window function will be picked. Default is @code{0.75}.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Leave almost only low frequencies in audio:
+@example
+afftfilt="1-clip((b/nb)*b,0,1)"
+@end example
+@end itemize
+
 @anchor{aformat}
 @section aformat
 
@@ -660,36 +858,46 @@ Shorter signals than the chosen attack time will be left untouched.
 @table @option
 @item level_in
 Set input level before filtering.
+Default is 1. Allowed range is from 0.015625 to 64.
 
 @item range
 Set the level of gain reduction when the signal is below the threshold.
+Default is 0.06125. Allowed range is from 0 to 1.
 
 @item threshold
 If a signal rises above this level the gain reduction is released.
+Default is 0.125. Allowed range is from 0 to 1.
 
 @item ratio
 Set a ratio about which the signal is reduced.
+Default is 2. Allowed range is from 1 to 9000.
 
 @item attack
 Amount of milliseconds the signal has to rise above the threshold before gain
 reduction stops.
+Default is 20 milliseconds. Allowed range is from 0.01 to 9000.
 
 @item release
 Amount of milliseconds the signal has to fall below the threshold before the
-reduction is increased again.
+reduction is increased again. Default is 250 milliseconds.
+Allowed range is from 0.01 to 9000.
 
 @item makeup
 Set amount of amplification of signal after processing.
+Default is 1. Allowed range is from 1 to 64.
 
 @item knee
 Curve the sharp knee around the threshold to enter gain reduction more softly.
+Default is 2.828427125. Allowed range is from 1 to 8.
 
 @item detection
 Choose if exact signal should be taken for detection or an RMS like one.
+Default is rms. Can be peak or rms.
 
 @item link
 Choose if the average level between all channels or the louder channel affects
 the reduction.
+Default is average. Can be average or maximum.
 @end table
 
 @section alimiter
@@ -702,9 +910,14 @@ that the delay it produces is the attack time you set.
 The filter accepts the following options:
 
 @table @option
+@item level_in
+Set input gain. Default is 1.
+
+@item level_out
+Set output gain. Default is 1.
+
 @item limit
-Don't let signals above this level pass the limiter. The removed amplitude is
-added automatically. Default is 1.
+Don't let signals above this level pass the limiter. Default is 1.
 
 @item attack
 The limiter will reach its attenuation level in this amount of time in
@@ -722,6 +935,10 @@ time.
 @item asc_level
 Select how much the release time is affected by ASC, 0 means nearly no changes
 in release time while 1 produces higher release times.
+
+@item level
+Auto level output signal. Default is enabled.
+This normalizes audio back to 0dB if enabled.
 @end table
 
 Depending on picked setting it is recommended to upsample input 2x or 4x times
@@ -852,6 +1069,100 @@ stream ends. The default value is 2 seconds.
 
 @end table
 
+@section anequalizer
+
+High-order parametric multiband equalizer for each channel.
+
+It accepts the following parameters:
+@table @option
+@item params
+
+This option string is in format:
+"c@var{chn} f=@var{cf} w=@var{w} g=@var{g} t=@var{f} | ..."
+Each equalizer band is separated by '|'.
+
+@table @option
+@item chn
+Set channel number to which equalization will be applied.
+If input doesn't have that channel the entry is ignored.
+
+@item cf
+Set central frequency for band.
+If input doesn't have that frequency the entry is ignored.
+
+@item w
+Set band width in hertz.
+
+@item g
+Set band gain in dB.
+
+@item f
+Set filter type for band, optional, can be:
+
+@table @samp
+@item 0
+Butterworth, this is default.
+
+@item 1
+Chebyshev type 1.
+
+@item 2
+Chebyshev type 2.
+@end table
+@end table
+
+@item curves
+With this option activated frequency response of anequalizer is displayed
+in video stream.
+
+@item size
+Set video stream size. Only useful if curves option is activated.
+
+@item mgain
+Set max gain that will be displayed. Only useful if curves option is activated.
+Setting this to reasonable value allows to display gain which is derived from
+neighbour bands which are too close to each other and thus produce higher gain
+when both are activated.
+
+@item fscale
+Set frequency scale used to draw frequency response in video output.
+Can be linear or logarithmic. Default is logarithmic.
+
+@item colors
+Set color for each channel curve which is going to be displayed in video stream.
+This is list of color names separated by space or by '|'.
+Unrecognised or missing colors will be replaced by white color.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Lower gain by 10 of central frequency 200Hz and width 100 Hz
+for first 2 channels using Chebyshev type 1 filter:
+@example
+anequalizer=c0 f=200 w=100 g=-10 t=1|c1 f=200 w=100 g=-10 t=1
+@end example
+@end itemize
+
+@subsection Commands
+
+This filter supports the following commands:
+@table @option
+@item change
+Alter existing filter parameters.
+Syntax for the commands is : "@var{fN}|f=@var{freq}|w=@var{width}|g=@var{gain}"
+
+@var{fN} is existing filter number, starting from 0, if no such filter is available
+error is returned.
+@var{freq} set new frequency parameter.
+@var{width} set new width parameter in herz.
+@var{gain} set new gain parameter in dB.
+
+Full filter invocation with asendcmd may look like this:
+asendcmd=c='4.0 anequalizer change 0|f=200|w=50|g=1',anequalizer=...
+@end table
+
 @section anull
 
 Pass the audio source unchanged to the output.
@@ -943,6 +1254,63 @@ It accepts the following values:
 @item triangular, t
 @item sinusoidal, s
 @end table
+@end table
+
+@section apulsator
+
+Audio pulsator is something between an autopanner and a tremolo.
+But it can produce funny stereo effects as well. Pulsator changes the volume
+of the left and right channel based on a LFO (low frequency oscillator) with
+different waveforms and shifted phases.
+This filter have the ability to define an offset between left and right
+channel. An offset of 0 means that both LFO shapes match each other.
+The left and right channel are altered equally - a conventional tremolo.
+An offset of 50% means that the shape of the right channel is exactly shifted
+in phase (or moved backwards about half of the frequency) - pulsator acts as
+an autopanner. At 1 both curves match again. Every setting in between moves the
+phase shift gapless between all stages and produces some "bypassing" sounds with
+sine and triangle waveforms. The more you set the offset near 1 (starting from
+the 0.5) the faster the signal passes from the left to the right speaker.
+
+The filter accepts the following options:
+
+@table @option
+@item level_in
+Set input gain. By default it is 1. Range is [0.015625 - 64].
+
+@item level_out
+Set output gain. By default it is 1. Range is [0.015625 - 64].
+
+@item mode
+Set waveform shape the LFO will use. Can be one of: sine, triangle, square,
+sawup or sawdown. Default is sine.
+
+@item amount
+Set modulation. Define how much of original signal is affected by the LFO.
+
+@item offset_l
+Set left channel offset. Default is 0. Allowed range is [0 - 1].
+
+@item offset_r
+Set right channel offset. Default is 0.5. Allowed range is [0 - 1].
+
+@item width
+Set pulse width. Default is 1. Allowed range is [0 - 2].
+
+@item timing
+Set possible timing mode. Can be one of: bpm, ms or hz. Default is hz.
+
+@item bpm
+Set bpm. Default is 120. Allowed range is [30 - 300]. Only used if timing
+is set to bpm.
+
+@item ms
+Set ms. Default is 500. Allowed range is [10 - 2000]. Only used if timing
+is set to ms.
+
+@item hz
+Set frequency in Hz. Default is 2. Allowed range is [0.01 - 100]. Only used
+if timing is set to hz.
 @end table
 
 @anchor{aresample}
@@ -1626,7 +1994,121 @@ than the signal (making it, in some ways, similar to squelch):
 @example
 compand=.1|.1:.1|.1:-45.1/-45.1|-45/-900|0/-900:.01:45:-90:.1
 @end example
+
+@item
+2:1 compression starting at -6dB:
+@example
+compand=points=-80/-80|-6/-6|0/-3.8|20/3.5
+@end example
+
+@item
+2:1 compression starting at -9dB:
+@example
+compand=points=-80/-80|-9/-9|0/-5.3|20/2.9
+@end example
+
+@item
+2:1 compression starting at -12dB:
+@example
+compand=points=-80/-80|-12/-12|0/-6.8|20/1.9
+@end example
+
+@item
+2:1 compression starting at -18dB:
+@example
+compand=points=-80/-80|-18/-18|0/-9.8|20/0.7
+@end example
+
+@item
+3:1 compression starting at -15dB:
+@example
+compand=points=-80/-80|-15/-15|0/-10.8|20/-5.2
+@end example
+
+@item
+Compressor/Gate:
+@example
+compand=points=-80/-105|-62/-80|-15.4/-15.4|0/-12|20/-7.6
+@end example
+
+@item
+Expander:
+@example
+compand=attacks=0:points=-80/-169|-54/-80|-49.5/-64.6|-41.1/-41.1|-25.8/-15|-10.8/-4.5|0/0|20/8.3
+@end example
+
+@item
+Hard limiter at -6dB:
+@example
+compand=attacks=0:points=-80/-80|-6/-6|20/-6
+@end example
+
+@item
+Hard limiter at -12dB:
+@example
+compand=attacks=0:points=-80/-80|-12/-12|20/-12
+@end example
+
+@item
+Hard noise gate at -35 dB:
+@example
+compand=attacks=0:points=-80/-115|-35.1/-80|-35/-35|20/20
+@end example
+
+@item
+Soft limiter:
+@example
+compand=attacks=0:points=-80/-80|-12.4/-12.4|-6/-8|0/-6.8|20/-2.8
+@end example
 @end itemize
+
+@section compensationdelay
+
+Compensation Delay Line is a metric based delay to compensate differing
+positions of microphones or speakers.
+
+For example, you have recorded guitar with two microphones placed in
+different location. Because the front of sound wave has fixed speed in
+normal conditions, the phasing of microphones can vary and depends on
+their location and interposition. The best sound mix can be achieved when
+these microphones are in phase (synchronized). Note that distance of
+~30 cm between microphones makes one microphone to capture signal in
+antiphase to another microphone. That makes the final mix sounding moody.
+This filter helps to solve phasing problems by adding different delays
+to each microphone track and make them synchronized.
+
+The best result can be reached when you take one track as base and
+synchronize other tracks one by one with it.
+Remember that synchronization/delay tolerance depends on sample rate, too.
+Higher sample rates will give more tolerance.
+
+It accepts the following parameters:
+
+@table @option
+@item mm
+Set millimeters distance. This is compensation distance for fine tuning.
+Default is 0.
+
+@item cm
+Set cm distance. This is compensation distance for tightening distance setup.
+Default is 0.
+
+@item m
+Set meters distance. This is compensation distance for hard distance setup.
+Default is 0.
+
+@item dry
+Set dry amount. Amount of unprocessed (dry) signal.
+Default is 0.
+
+@item wet
+Set wet amount. Amount of processed (wet) signal.
+Default is 1.
+
+@item temp
+Set temperature degree in Celsius. This is the temperature of the environment.
+Default is 20.
+@end table
 
 @section dcshift
 Apply a DC shift to the audio.
@@ -2349,6 +2831,9 @@ processing. See @ref{pan} and @ref{amerge} filter.
 The filter accepts the following options:
 
 @table @option
+@item level_in
+Set input gain. Default is 1. Range is between 0.015625 and 64.
+
 @item threshold
 If a signal of second stream raises above this level it will affect the gain
 reduction of first stream.
@@ -2383,6 +2868,13 @@ reduction. Default is @code{average}.
 @item detection
 Should the exact signal be taken in case of @code{peak} or an RMS one in case
 of @code{rms}. Default is @code{rms} which is mainly smoother.
+
+@item level_sc
+Set sidechain gain. Default is 1. Range is between 0.015625 and 64.
+
+@item mix
+How much to use compressed signal in output. Default is 1.
+Range is between 0 and 1.
 @end table
 
 @subsection Examples
@@ -2396,6 +2888,70 @@ merged with 2nd input:
 ffmpeg -i main.flac -i sidechain.flac -filter_complex "[1:a]asplit=2[sc][mix];[0:a][sc]sidechaincompress[compr];[compr][mix]amerge"
 @end example
 @end itemize
+
+@section sidechaingate
+
+A sidechain gate acts like a normal (wideband) gate but has the ability to
+filter the detected signal before sending it to the gain reduction stage.
+Normally a gate uses the full range signal to detect a level above the
+threshold.
+For example: If you cut all lower frequencies from your sidechain signal
+the gate will decrease the volume of your track only if not enough highs
+appear. With this technique you are able to reduce the resonation of a
+natural drum or remove "rumbling" of muted strokes from a heavily distorted
+guitar.
+It needs two input streams and returns one output stream.
+First input stream will be processed depending on second stream signal.
+
+The filter accepts the following options:
+
+@table @option
+@item level_in
+Set input level before filtering.
+Default is 1. Allowed range is from 0.015625 to 64.
+
+@item range
+Set the level of gain reduction when the signal is below the threshold.
+Default is 0.06125. Allowed range is from 0 to 1.
+
+@item threshold
+If a signal rises above this level the gain reduction is released.
+Default is 0.125. Allowed range is from 0 to 1.
+
+@item ratio
+Set a ratio about which the signal is reduced.
+Default is 2. Allowed range is from 1 to 9000.
+
+@item attack
+Amount of milliseconds the signal has to rise above the threshold before gain
+reduction stops.
+Default is 20 milliseconds. Allowed range is from 0.01 to 9000.
+
+@item release
+Amount of milliseconds the signal has to fall below the threshold before the
+reduction is increased again. Default is 250 milliseconds.
+Allowed range is from 0.01 to 9000.
+
+@item makeup
+Set amount of amplification of signal after processing.
+Default is 1. Allowed range is from 1 to 64.
+
+@item knee
+Curve the sharp knee around the threshold to enter gain reduction more softly.
+Default is 2.828427125. Allowed range is from 1 to 8.
+
+@item detection
+Choose if exact signal should be taken for detection or an RMS like one.
+Default is rms. Can be peak or rms.
+
+@item link
+Choose if the average level between all channels or the louder channel affects
+the reduction.
+Default is average. Can be average or maximum.
+
+@item level_sc
+Set sidechain gain. Default is 1. Range is from 0.015625 to 64.
+@end table
 
 @section silencedetect
 
@@ -2490,6 +3046,14 @@ at the beginning of each period of silence.
 For example, if you want to remove long pauses between words but do not want
 to remove the pauses completely. Default value is @code{0}.
 
+@item detection
+Set how is silence detected. Can be @code{rms} or @code{peak}. Second is faster
+and works better with digital silence which is exactly 0.
+Default value is @code{rms}.
+
+@item window
+Set ratio used to calculate size of window for detecting silence.
+Default value is @code{0.02}. Allowed range is from @code{0} to @code{10}.
 @end table
 
 @subsection Examples
@@ -2502,7 +3066,52 @@ pressing the record button and the start of the performance:
 @example
 silenceremove=1:5:0.02
 @end example
+
+@item
+Trim all silence encountered from begining to end where there is more than 1
+second of silence in audio:
+@example
+silenceremove=0:0:0:-1:1:-90dB
+@end example
 @end itemize
+
+@section sofalizer
+
+SOFAlizer uses head-related transfer functions (HRTFs) to create virtual
+loudspeakers around the user for binaural listening via headphones (audio
+formats up to 9 channels supported).
+The HRTFs are stored in SOFA files (see @url{http://www.sofacoustics.org/} for a database).
+SOFAlizer is developed at the Acoustics Research Institute (ARI) of the
+Austrian Academy of Sciences.
+
+To enable compilation of this filter you need to configure FFmpeg with
+@code{--enable-netcdf}.
+
+The filter accepts the following options:
+
+@table @option
+@item sofa
+Set the SOFA file used for rendering.
+
+@item gain
+Set gain applied to audio. Value is in dB. Default is 0.
+
+@item rotation
+Set rotation of virtual loudspeakers in deg. Default is 0.
+
+@item elevation
+Set elevation of virtual speakers in deg. Default is 0.
+
+@item radius
+Set distance in meters between loudspeakers and the listener with near-field
+HRTFs. Default is 1.
+
+@item type
+Set processing type. Can be @var{time} or @var{freq}. @var{time} is
+processing audio in time domain which is slow but gives high quality output.
+@var{freq} is processing audio in frequency domain which is fast but gives
+mediocre output. Default is @var{freq}.
+@end table
 
 @section stereotools
 
@@ -3529,6 +4138,7 @@ Available values for component modes are:
 @item lighten
 @item linearlight
 @item multiply
+@item multiply128
 @item negation
 @item normal
 @item or
@@ -3631,6 +4241,12 @@ blend=all_expr='if(gte(Y-N*SH,0),A,B)'
 Apply uncover up-left effect:
 @example
 blend=all_expr='if(gte(T*SH*40+Y,H)*gte((T*40*SW+X)*W/H,W),A,B)'
+@end example
+
+@item
+Split diagonally video and shows top and bottom layer on each side:
+@example
+blend=all_expr=if(gt(X,Y*(W/H)),A,B)
 @end example
 
 @item
@@ -3797,6 +4413,9 @@ forward predicted MVs of B-frames
 @item bb
 backward predicted MVs of B-frames
 @end table
+
+@item qp
+Display quantization parameters using the chroma planes
 @end table
 
 @subsection Examples
@@ -4049,6 +4668,68 @@ For example to convert from BT.601 to SMPTE-240M, use the command:
 @example
 colormatrix=bt601:smpte240m
 @end example
+
+@section convolution
+
+Apply convolution 3x3 or 5x5 filter.
+
+The filter accepts the following options:
+
+@table @option
+@item 0m
+@item 1m
+@item 2m
+@item 3m
+Set matrix for each plane.
+Matrix is sequence of 9 or 25 signed integers.
+
+@item 0rdiv
+@item 1rdiv
+@item 2rdiv
+@item 3rdiv
+Set multiplier for calculated value for each plane.
+
+@item 0bias
+@item 1bias
+@item 2bias
+@item 3bias
+Set bias for each plane. This value is added to the result of the multiplication.
+Useful for making the overall image brighter or darker. Default is 0.0.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Apply sharpen:
+@example
+convolution="0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0:0 -1 0 -1 5 -1 0 -1 0"
+@end example
+
+@item
+Apply blur:
+@example
+convolution="1 1 1 1 1 1 1 1 1:1 1 1 1 1 1 1 1 1:1 1 1 1 1 1 1 1 1:1 1 1 1 1 1 1 1 1:1/9:1/9:1/9:1/9"
+@end example
+
+@item
+Apply edge enhance:
+@example
+convolution="0 0 0 -1 1 0 0 0 0:0 0 0 -1 1 0 0 0 0:0 0 0 -1 1 0 0 0 0:0 0 0 -1 1 0 0 0 0:5:1:1:1:0:128:128:128"
+@end example
+
+@item
+Apply edge detect:
+@example
+convolution="0 1 0 1 -4 1 0 1 0:0 1 0 1 -4 1 0 1 0:0 1 0 1 -4 1 0 1 0:0 1 0 1 -4 1 0 1 0:5:5:5:1:0:128:128:128"
+@end example
+
+@item
+Apply emboss:
+@example
+convolution="-2 -1 0 -1 1 1 0 1 2:-2 -1 0 -1 1 1 0 1 2:-2 -1 0 -1 1 1 0 1 2:-2 -1 0 -1 1 1 0 1 2"
+@end example
+@end itemize
 
 @section copy
 
@@ -5462,7 +6143,7 @@ within the parameter list.
 @item
 Show the text at the center of the video frame:
 @example
-drawtext="fontsize=30:fontfile=FreeSerif.ttf:text='hello world':x=(w-text_w)/2:y=(h-text_h-line_h)/2"
+drawtext="fontsize=30:fontfile=FreeSerif.ttf:text='hello world':x=(w-text_w)/2:y=(h-text_h)/2"
 @end example
 
 @item
@@ -5933,6 +6614,12 @@ Sharpen:
 fftfilt=dc_Y=0:weight_Y='1+squish(1-(Y+X)/100)'
 @end example
 
+@item
+Blur:
+@example
+fftfilt=dc_Y=0:weight_Y='exp(-4 * ((Y+X)/(W+H)))'
+@end example
+
 @end itemize
 
 @section field
@@ -6308,7 +6995,7 @@ For example:
 ffmpeg -i in.vob -vf "fieldorder=bff" out.dv
 @end example
 
-@section fifo
+@section fifo, afifo
 
 Buffer input images and send them when they are requested.
 
@@ -6797,12 +7484,9 @@ geq=lum=255*gauss((X/W-0.5)*3)*gauss((Y/H-0.5)*3)/gauss(0)/gauss(0),format=gray
 @end example
 
 @item
-Create a linear gradient to use as a mask for another filter, then
-compose with @ref{overlay}. In this example the video will gradually
-become more blurry from the top to the bottom of the y-axis as defined
-by the linear gradient:
+Diagonal split screen to compare filter effect:
 @example
-ffmpeg -i input.mp4 -filter_complex "geq=lum=255*(Y/H),format=gray[grad];[0:v]boxblur=4[blur];[blur][grad]alphamerge[alpha];[0:v][alpha]overlay" output.mp4
+ffmpeg -i input -filter_complex "[0:v]geq=lum=if(gt(X\,Y*(W/H))\,255),format=gray[alpha];[0:v][alpha]alphamerge,curves=preset=color_negative[filtered];[0:v][filtered]overlay" output
 @end example
 @end itemize
 
@@ -6978,109 +7662,42 @@ Compute and draw a color distribution histogram for the input video.
 The computed histogram is a representation of the color component
 distribution in an image.
 
-The filter accepts the following options:
-
-@table @option
-@item mode
-Set histogram mode.
-
-It accepts the following values:
-@table @samp
-@item levels
-Standard histogram that displays the color components distribution in an
-image. Displays color graph for each color component. Shows distribution of
+Standard histogram displays the color components distribution in an image.
+Displays color graph for each color component. Shows distribution of
 the Y, U, V, A or R, G, B components, depending on input format, in the
 current frame. Below each graph a color component scale meter is shown.
 
-@item color
-Displays chroma values (U/V color placement) in a two dimensional
-graph (which is called a vectorscope). The brighter a pixel in the
-vectorscope, the more pixels of the input frame correspond to that pixel
-(i.e., more pixels have this chroma value). The V component is displayed on
-the horizontal (X) axis, with the leftmost side being V = 0 and the rightmost
-side being V = 255. The U component is displayed on the vertical (Y) axis,
-with the top representing U = 0 and the bottom representing U = 255.
+The filter accepts the following options:
 
-The position of a white pixel in the graph corresponds to the chroma value of
-a pixel of the input clip. The graph can therefore be used to read the hue
-(color flavor) and the saturation (the dominance of the hue in the color). As
-the hue of a color changes, it moves around the square. At the center of the
-square the saturation is zero, which means that the corresponding pixel has no
-color. If the amount of a specific color is increased (while leaving the other
-colors unchanged) the saturation increases, and the indicator moves towards
-the edge of the square.
-
-@item color2
-Chroma values in vectorscope, similar as @code{color} but actual chroma values
-are displayed.
-
-@item waveform
-Per row/column color component graph. In row mode, the graph on the left side
-represents color component value 0 and the right side represents value = 255.
-In column mode, the top side represents color component value = 0 and bottom
-side represents value = 255.
-@end table
-Default value is @code{levels}.
-
+@table @option
 @item level_height
-Set height of level in @code{levels}. Default value is @code{200}.
+Set height of level. Default value is @code{200}.
 Allowed range is [50, 2048].
 
 @item scale_height
-Set height of color scale in @code{levels}. Default value is @code{12}.
+Set height of color scale. Default value is @code{12}.
 Allowed range is [0, 40].
 
-@item step
-Set step for @code{waveform} mode. Smaller values are useful to find out how
-many values of the same luminance are distributed across input rows/columns.
-Default value is @code{10}. Allowed range is [1, 255].
-
-@item waveform_mode
-Set mode for @code{waveform}. Can be either @code{row}, or @code{column}.
-Default is @code{row}.
-
-@item waveform_mirror
-Set mirroring mode for @code{waveform}. @code{0} means unmirrored, @code{1}
-means mirrored. In mirrored mode, higher values will be represented on the left
-side for @code{row} mode and at the top for @code{column} mode. Default is
-@code{0} (unmirrored).
-
 @item display_mode
-Set display mode for @code{waveform} and @code{levels}.
+Set display mode.
 It accepts the following values:
 @table @samp
 @item parade
-Display separate graph for the color components side by side in
-@code{row} waveform mode or one below the other in @code{column} waveform mode
-for @code{waveform} histogram mode. For @code{levels} histogram mode,
-per color component graphs are placed below each other.
-
-Using this display mode in @code{waveform} histogram mode makes it easy to
-spot color casts in the highlights and shadows of an image, by comparing the
-contours of the top and the bottom graphs of each waveform. Since whites,
-grays, and blacks are characterized by exactly equal amounts of red, green,
-and blue, neutral areas of the picture should display three waveforms of
-roughly equal width/height. If not, the correction is easy to perform by
-making level adjustments the three waveforms.
+Per color component graphs are placed below each other.
 
 @item overlay
 Presents information identical to that in the @code{parade}, except
 that the graphs representing color components are superimposed directly
 over one another.
-
-This display mode in @code{waveform} histogram mode makes it easier to spot
-relative differences or similarities in overlapping areas of the color
-components that are supposed to be identical, such as neutral whites, grays,
-or blacks.
 @end table
 Default is @code{parade}.
 
 @item levels_mode
-Set mode for @code{levels}. Can be either @code{linear}, or @code{logarithmic}.
+Set mode. Can be either @code{linear}, or @code{logarithmic}.
 Default is @code{linear}.
 
 @item components
-Set what color components to display for mode @code{levels}.
+Set what color components to display.
 Default is @code{7}.
 @end table
 
@@ -7150,6 +7767,10 @@ The filter accept the following option:
 @table @option
 @item inputs
 Set number of input streams. Default is 2.
+
+@item shortest
+If set to 1, force the output to terminate when the shortest input
+terminates. Default value is 0.
 @end table
 
 @section hue
@@ -7827,6 +8448,105 @@ format=rgb24,mergeplanes=0x000102:yuv444p
 @end example
 @end itemize
 
+@section metadata, ametadata
+
+Manipulate frame metadata.
+
+This filter accepts the following options:
+
+@table @option
+@item mode
+Set mode of operation of the filter.
+
+Can be one of the following:
+
+@table @samp
+@item select
+If both @code{value} and @code{key} is set, select frames
+which have such metadata. If only @code{key} is set, select
+every frame that has such key in metadata.
+
+@item add
+Add new metadata @code{key} and @code{value}. If key is already available
+do nothing.
+
+@item modify
+Modify value of already present key.
+
+@item delete
+If @code{value} is set, delete only keys that have such value.
+Otherwise, delete key.
+
+@item print
+Print key and its value if metadata was found. If @code{key} is not set print all
+metadata values available in frame.
+@end table
+
+@item key
+Set key used with all modes. Must be set for all modes except @code{print}.
+
+@item value
+Set metadata value which will be used. This option is mandatory for
+@code{modify} and @code{add} mode.
+
+@item function
+Which function to use when comparing metadata value and @code{value}.
+
+Can be one of following:
+
+@table @samp
+@item same_str
+Values are interpreted as strings, returns true if metadata value is same as @code{value}.
+
+@item starts_with
+Values are interpreted as strings, returns true if metadata value starts with
+the @code{value} option string.
+
+@item less
+Values are interpreted as floats, returns true if metadata value is less than @code{value}.
+
+@item equal
+Values are interpreted as floats, returns true if @code{value} is equal with metadata value.
+
+@item greater
+Values are interpreted as floats, returns true if metadata value is greater than @code{value}.
+
+@item expr
+Values are interpreted as floats, returns true if expression from option @code{expr}
+evaluates to true.
+@end table
+
+@item expr
+Set expression which is used when @code{function} is set to @code{expr}.
+The expression is evaluated through the eval API and can contain the following
+constants:
+
+@table @option
+@item VALUE1
+Float representation of @code{value} from metadata key.
+
+@item VALUE2
+Float representation of @code{value} as supplied by user in @code{value} option.
+@end table
+
+@item file
+If specified in @code{print} mode, output is written to the named file. When
+filename equals "-" data is written to standard output.
+If @code{file} option is not set, output is written to the log with AV_LOG_INFO
+loglevel.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Print all metadata values for frames with key @code{lavfi.singnalstats.YDIF} with values
+between 0 and 1.
+@example
+@end example
+signalstats,metadata=print:key=lavfi.signalstats.YDIF:value=0:function=expr:expr='between(VALUE1,0,1)'
+@end itemize
+
 @section mpdecimate
 
 Drop frames that do not differ greatly from the previous frame in
@@ -7872,6 +8592,115 @@ Negate input video.
 
 It accepts an integer in input; if non-zero it negates the
 alpha component (if available). The default value in input is 0.
+
+@section nnedi
+
+Deinterlace video using neural network edge directed interpolation.
+
+This filter accepts the following options:
+
+@table @option
+@item weights
+Mandatory option, without binary file filter can not work.
+Currently file can be found here:
+https://github.com/dubhater/vapoursynth-nnedi3/blob/master/src/nnedi3_weights.bin
+
+@item deint
+Set which frames to deinterlace, by default it is @code{all}.
+Can be @code{all} or @code{interlaced}.
+
+@item field
+Set mode of operation.
+
+Can be one of the following:
+
+@table @samp
+@item af
+Use frame flags, both fields.
+@item a
+Use frame flags, single field.
+@item t
+Use top field only.
+@item b
+Use bottom field only.
+@item ft
+Use both fields, top first.
+@item fb
+Use both fields, bottom first.
+@end table
+
+@item planes
+Set which planes to process, by default filter process all frames.
+
+@item nsize
+Set size of local neighborhood around each pixel, used by the predictor neural
+network.
+
+Can be one of the following:
+
+@table @samp
+@item s8x6
+@item s16x6
+@item s32x6
+@item s48x6
+@item s8x4
+@item s16x4
+@item s32x4
+@end table
+
+@item nns
+Set the number of neurons in predicctor neural network.
+Can be one of the following:
+
+@table @samp
+@item n16
+@item n32
+@item n64
+@item n128
+@item n256
+@end table
+
+@item qual
+Controls the number of different neural network predictions that are blended
+together to compute the final output value. Can be @code{fast}, default or
+@code{slow}.
+
+@item etype
+Set which set of weights to use in the predictor.
+Can be one of the following:
+
+@table @samp
+@item a
+weights trained to minimize absolute error
+@item s
+weights trained to minimize squared error
+@end table
+
+@item pscrn
+Controls whether or not the prescreener neural network is used to decide
+which pixels should be processed by the predictor neural network and which
+can be handled by simple cubic interpolation.
+The prescreener is trained to know whether cubic interpolation will be
+sufficient for a pixel or whether it should be predicted by the predictor nn.
+The computational complexity of the prescreener nn is much less than that of
+the predictor nn. Since most pixels can be handled by cubic interpolation,
+using the prescreener generally results in much faster processing.
+The prescreener is pretty accurate, so the difference between using it and not
+using it is almost always unnoticeable.
+
+Can be one of the following:
+
+@table @samp
+@item none
+@item original
+@item new
+@end table
+
+Default is @code{new}.
+
+@item fapprox
+Set various debugging flags.
+@end table
 
 @section noformat
 
@@ -9476,6 +10305,21 @@ dimension is divisible by n and adjust the value if necessary.
 See below for the list of accepted constants for use in the dimension
 expression.
 
+@item eval
+Specify when to evaluate @var{width} and @var{height} expression. It accepts the following values:
+
+@table @samp
+@item init
+Only evaluate expressions once during the filter initialization or when a command is processed.
+
+@item frame
+Evaluate expressions for each incoming frame.
+
+@end table
+
+Default value is @samp{init}.
+
+
 @item interl
 Set the interlacing mode. It accepts the following values:
 
@@ -9498,6 +10342,15 @@ Set libswscale scaling flags. See
 @ref{sws_flags,,the ffmpeg-scaler manual,ffmpeg-scaler} for the
 complete list of values. If not explicitly specified the filter applies
 the default flags.
+
+
+@item param0, param1
+Set libswscale input parameters for scaling algorithms that need them. See
+@ref{sws_params,,the ffmpeg-scaler manual,ffmpeg-scaler} for the
+complete documentation. If not explicitly specified the filter applies
+empty parameters.
+
+
 
 @item size, s
 Set the video size. For the syntax of this option, check the
@@ -9748,6 +10601,73 @@ uses the reference video instead of the main input as basis.
 Scale a subtitle stream to match the main video in size before overlaying
 @example
 'scale2ref[b][a];[a][b]overlay'
+@end example
+@end itemize
+
+@section selectivecolor
+
+Adjust cyan, magenta, yellow and black (CMYK) to certain ranges of colors (such
+as "reds", "yellows", "greens", "cyans", ...). The adjustment range is defined
+by the "purity" of the color (that is, how saturated it already is).
+
+This filter is similar to the Adobe Photoshop Selective Color tool.
+
+The filter accepts the following options:
+
+@table @option
+@item correction_method
+Select color correction method.
+
+Available values are:
+@table @samp
+@item absolute
+Specified adjustments are applied "as-is" (added/subtracted to original pixel
+component value).
+@item relative
+Specified adjustments are relative to the original component value.
+@end table
+Default is @code{absolute}.
+@item reds
+Adjustments for red pixels (pixels where the red component is the maximum)
+@item yellows
+Adjustments for yellow pixels (pixels where the blue component is the minimum)
+@item greens
+Adjustments for green pixels (pixels where the green component is the maximum)
+@item cyans
+Adjustments for cyan pixels (pixels where the red component is the minimum)
+@item blues
+Adjustments for blue pixels (pixels where the blue component is the maximum)
+@item magentas
+Adjustments for magenta pixels (pixels where the green component is the minimum)
+@item whites
+Adjustments for white pixels (pixels where all components are greater than 128)
+@item neutrals
+Adjustments for all pixels except pure black and pure white
+@item blacks
+Adjustments for black pixels (pixels where all components are lesser than 128)
+@item psfile
+Specify a Photoshop selective color file (@code{.asv}) to import the settings from.
+@end table
+
+All the adjustment settings (@option{reds}, @option{yellows}, ...) accept up to
+4 space separated floating point adjustment values in the [-1,1] range,
+respectively to adjust the amount of cyan, magenta, yellow and black for the
+pixels of its range.
+
+@subsection Examples
+
+@itemize
+@item
+Increase cyan by 50% and reduce yellow by 33% in every green areas, and
+increase magenta by 27% in blue areas:
+@example
+selectivecolor=greens=.5 0 -.33 0:blues=0 .27
+@end example
+
+@item
+Use a Photoshop selective color preset:
+@example
+selectivecolor=psfile=MySelectiveColorPresets/Misty.asv
 @end example
 @end itemize
 
@@ -10357,14 +11277,59 @@ interleaved rows (left eye has top row, right eye starts on next row)
 @item irr
 interleaved rows (right eye has top row, left eye starts on next row)
 
+@item icl
+interleaved columns, left eye first
+
+@item icr
+interleaved columns, right eye first
+
 Default value is @samp{sbsl}.
 @end table
 
 @item out
 Set stereoscopic image format of output.
 
-Available values for output image formats are all the input formats as well as:
 @table @samp
+@item sbsl
+side by side parallel (left eye left, right eye right)
+
+@item sbsr
+side by side crosseye (right eye left, left eye right)
+
+@item sbs2l
+side by side parallel with half width resolution
+(left eye left, right eye right)
+
+@item sbs2r
+side by side crosseye with half width resolution
+(right eye left, left eye right)
+
+@item abl
+above-below (left eye above, right eye below)
+
+@item abr
+above-below (right eye above, left eye below)
+
+@item ab2l
+above-below with half height resolution
+(left eye above, right eye below)
+
+@item ab2r
+above-below with half height resolution
+(right eye above, left eye below)
+
+@item al
+alternating frames (left eye first, right eye second)
+
+@item ar
+alternating frames (right eye first, left eye second)
+
+@item irl
+interleaved rows (left eye has top row, right eye starts on next row)
+
+@item irr
+interleaved rows (right eye has top row, left eye starts on next row)
+
 @item arbg
 anaglyph red/blue gray
 (red filter on left eye, blue filter on right eye)
@@ -10456,6 +11421,45 @@ stereo3d=sbsl:aybd
 Convert input video from above below (left eye above, right eye below) to side by side crosseye.
 @example
 stereo3d=abl:sbsr
+@end example
+@end itemize
+
+@section streamselect, astreamselect
+Select video or audio streams.
+
+The filter accepts the following options:
+
+@table @option
+@item inputs
+Set number of inputs. Default is 2.
+
+@item map
+Set input indexes to remap to outputs.
+@end table
+
+@subsection Commands
+
+The @code{streamselect} and @code{astreamselect} filter supports the following
+commands:
+
+@table @option
+@item map
+Set input indexes to remap to outputs.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Select first 5 seconds 1st stream and rest of time 2nd stream:
+@example
+sendcmd='5.0 streamselect map 1',streamselect=inputs=2:map=0
+@end example
+
+@item
+Same as above, but for audio:
+@example
+asendcmd='5.0 astreamselect map 1',astreamselect=inputs=2:map=0
 @end example
 @end itemize
 
@@ -10571,6 +11575,60 @@ Scale the input by 2x and smooth using the Super2xSaI (Scale and
 Interpolate) pixel art scaling algorithm.
 
 Useful for enlarging pixel art images without reducing sharpness.
+
+@section swaprect
+
+Swap two rectangular objects in video.
+
+This filter accepts the following options:
+
+@table @option
+@item w
+Set object width.
+
+@item h
+Set object height.
+
+@item x1
+Set 1st rect x coordinate.
+
+@item y1
+Set 1st rect y coordinate.
+
+@item x2
+Set 2nd rect x coordinate.
+
+@item y2
+Set 2nd rect y coordinate.
+
+All expressions are evaluated once for each frame.
+@end table
+
+The all options are expressions containing the following constants:
+
+@table @option
+@item w
+@item h
+The input width and height.
+
+@item a
+same as @var{w} / @var{h}
+
+@item sar
+input sample aspect ratio
+
+@item dar
+input display aspect ratio, it is the same as (@var{w} / @var{h}) * @var{sar}
+
+@item n
+The number of the input frame, starting from 0.
+
+@item t
+The timestamp expressed in seconds. It's NAN if the input timestamp is unknown.
+
+@item pos
+the position in the file of the input frame, NAN if unknown
+@end table
 
 @section swapuv
 Swap U & V plane.
@@ -11594,6 +12652,10 @@ The filter accept the following option:
 @table @option
 @item inputs
 Set number of input streams. Default is 2.
+
+@item shortest
+If set to 1, force the output to terminate when the shortest input
+terminates. Default value is 0.
 @end table
 
 @section w3fdif
@@ -11825,6 +12887,9 @@ single input image.
 
 @item s
 Set the output image size, default is 'hd720'.
+
+@item fps
+Set the output frame rate, default is '25'.
 @end table
 
 Each expression can contain the following constants:
@@ -12024,6 +13089,63 @@ Possible value are:
 @end table
 
 Default is same as input.
+
+@item rangein, rin
+Set the input color range.
+
+Possible values are:
+@table @var
+@item input
+@item limited
+@item full
+@end table
+
+Default is same as input.
+
+@item primariesin, pin
+Set the input color primaries.
+
+Possible values are:
+@table @var
+@item input
+@item 709
+@item unspecified
+@item 170m
+@item 240m
+@item 2020
+@end table
+
+Default is same as input.
+
+@item transferin, tin
+Set the input transfer characteristics.
+
+Possible values are:
+@table @var
+@item input
+@item 709
+@item unspecified
+@item 601
+@item linear
+@item 2020_10
+@item 2020_12
+@end table
+
+Default is same as input.
+
+@item matrixin, min
+Set the input colorspace matrix.
+
+Possible value are:
+@table @var
+@item input
+@item 709
+@item unspecified
+@item 470bg
+@item 170m
+@item 2020_ncl
+@item 2020_cl
+@end table
 @end table
 
 The values of the @option{w} and @option{h} options are expressions
@@ -12694,6 +13816,84 @@ tools.
 
 Below is a description of the currently available multimedia filters.
 
+@section ahistogram
+
+Convert input audio to a video output, displaying the volume histogram.
+
+The filter accepts the following options:
+
+@table @option
+@item dmode
+Specify how histogram is calculated.
+
+It accepts the following values:
+@table @samp
+@item single
+Use single histogram for all channels.
+@item separate
+Use separate histogram for each channel.
+@end table
+Default is @code{single}.
+
+@item rate, r
+Set frame rate, expressed as number of frames per second. Default
+value is "25".
+
+@item size, s
+Specify the video size for the output. For the syntax of this option, check the
+@ref{video size syntax,,"Video size" section in the ffmpeg-utils manual,ffmpeg-utils}.
+Default value is @code{hd720}.
+
+@item scale
+Set display scale.
+
+It accepts the following values:
+@table @samp
+@item log
+logarithmic
+@item sqrt
+square root
+@item cbrt
+cubic root
+@item lin
+linear
+@item rlog
+reverse logarithmic
+@end table
+Default is @code{log}.
+
+@item ascale
+Set amplitude scale.
+
+It accepts the following values:
+@table @samp
+@item log
+logarithmic
+@item lin
+linear
+@end table
+Default is @code{log}.
+
+@item acount
+Set how much frames to accumulate in histogram.
+Defauls is 1. Setting this to -1 accumulates all frames.
+
+@item rheight
+Set histogram ratio of window height.
+
+@item slide
+Set sonogram sliding.
+
+It accepts the following values:
+@table @samp
+@item replace
+replace old rows with new ones.
+@item scroll
+scroll from top to bottom.
+@end table
+Default is @code{replace}.
+@end table
+
 @section aphasemeter
 
 Convert input audio to a video output, displaying the audio phase.
@@ -12784,6 +13984,20 @@ Allowed range is @code{[0, 255]}.
 
 @item zoom
 Set the zoom factor. Default value is @code{1}. Allowed range is @code{[1, 10]}.
+
+@item draw
+Set the vectorscope drawing mode.
+
+Available values are:
+@table @samp
+@item dot
+Draw dot for each sample.
+
+@item line
+Draw line between previous and current sample.
+@end table
+
+Default value is @samp{dot}.
 @end table
 
 @subsection Examples
@@ -13196,6 +14410,25 @@ value between 0 and 1 to indicate a new scene; a low value reflects a low
 probability for the current frame to introduce a new scene, while a higher
 value means the current frame is more likely to be one (see the example below)
 
+@item concatdec_select
+The concat demuxer can select only part of a concat input file by setting an
+inpoint and an outpoint, but the output packets may not be entirely contained
+in the selected interval. By using this variable, it is possible to skip frames
+generated by the concat demuxer which are not exactly contained in the selected
+interval.
+
+This works by comparing the frame pts against the @var{lavf.concat.start_time}
+and the @var{lavf.concat.duration} packet metadata values which are also
+present in the decoded frames.
+
+The @var{concatdec_select} variable is -1 if the frame pts is at least
+start_time and either the duration metadata is missing or the frame pts is less
+than start_time + duration, 0 otherwise, and NaN if the start_time metadata is
+missing.
+
+That basically means that an input frame is selected if its pts is within the
+interval set by the concat demuxer.
+
 @end table
 
 The default value of the select expression is "1".
@@ -13270,72 +14503,12 @@ Send even and odd frames to separate outputs, and compose them:
 @example
 select=n=2:e='mod(n, 2)+1' [odd][even]; [odd] pad=h=2*ih [tmp]; [tmp][even] overlay=y=h
 @end example
-@end itemize
-
-@section selectivecolor
-
-Adjust cyan, magenta, yellow and black (CMYK) to certain ranges of colors (such
-as "reds", "yellows", "greens", "cyans", ...). The adjustment range is defined
-by the "purity" of the color (that is, how saturated it already is).
-
-This filter is similar to the Adobe Photoshop Selective Color tool.
-
-The filter accepts the following options:
-
-@table @option
-@item correction_method
-Select color correction method.
-
-Available values are:
-@table @samp
-@item absolute
-Specified adjustments are applied "as-is" (added/subtracted to original pixel
-component value).
-@item relative
-Specified adjustments are relative to the original component value.
-@end table
-Default is @code{absolute}.
-@item reds
-Adjustments for red pixels (pixels where the red component is the maximum)
-@item yellows
-Adjustments for yellow pixels (pixels where the blue component is the minimum)
-@item greens
-Adjustments for green pixels (pixels where the green component is the maximum)
-@item cyans
-Adjustments for cyan pixels (pixels where the red component is the minimum)
-@item blues
-Adjustments for blue pixels (pixels where the blue component is the maximum)
-@item magentas
-Adjustments for magenta pixels (pixels where the green component is the minimum)
-@item whites
-Adjustments for white pixels (pixels where all components are greater than 128)
-@item neutrals
-Adjustments for all pixels except pure black and pure white
-@item blacks
-Adjustments for black pixels (pixels where all components are lesser than 128)
-@item psfile
-Specify a Photoshop selective color file (@code{.asv}) to import the settings from.
-@end table
-
-All the adjustment settings (@option{reds}, @option{yellows}, ...) accept up to
-4 space separated floating point adjustment values in the [-1,1] range,
-respectively to adjust the amount of cyan, magenta, yellow and black for the
-pixels of its range.
-
-@subsection Examples
-
-@itemize
-@item
-Increase cyan by 50% and reduce yellow by 33% in every green areas, and
-increase magenta by 27% in blue areas:
-@example
-selectivecolor=greens=.5 0 -.33 0:blues=0 .27
-@end example
 
 @item
-Use a Photoshop selective color preset:
+Select useful frames from an ffconcat file which is using inpoints and
+outpoints but where the source files are not intra frame only.
 @example
-selectivecolor=psfile=MySelectiveColorPresets/Misty.asv
+ffmpeg -copyts -vsync 0 -segment_time_metadata 1 -i input.ffconcat -vf select=concatdec_select -af aselect=concatdec_select output.avi
 @end example
 @end itemize
 
@@ -13988,6 +15161,7 @@ It accepts the following values:
 @item nuttall
 @item lanczos
 @item gauss
+@item tukey
 @end table
 Default is @code{hanning}.
 
@@ -14003,8 +15177,20 @@ Default is @code{1}, which means time averaging is disabled.
 Specify list of colors separated by space or by '|' which will be used to
 draw channel frequencies. Unrecognized or missing colors will be replaced
 by white color.
+
+@item cmode
+Set channel display mode.
+
+It accepts the following values:
+@table @samp
+@item combined
+@item separate
+@end table
+Default is @code{combined}.
+
 @end table
 
+@anchor{showspectrum}
 @section showspectrum
 
 Convert input audio to a video output, representing the audio frequency
@@ -14027,6 +15213,8 @@ It accepts the following values:
 the samples start again on the left when they reach the right
 @item scroll
 the samples scroll from right to left
+@item rscroll
+the samples scroll from left to right
 @item fullframe
 frames are only produced when the samples reach the right
 @end table
@@ -14054,7 +15242,21 @@ It accepts the following values:
 @item channel
 each channel is displayed in a separate color
 @item intensity
-each channel is is displayed using the same color scheme
+each channel is displayed using the same color scheme
+@item rainbow
+each channel is displayed using the rainbow color scheme
+@item moreland
+each channel is displayed using the moreland color scheme
+@item nebulae
+each channel is displayed using the nebulae color scheme
+@item fire
+each channel is displayed using the fire color scheme
+@item fiery
+each channel is displayed using the fiery color scheme
+@item fruit
+each channel is displayed using the fruit color scheme
+@item cool
+each channel is displayed using the cool color scheme
 @end table
 
 Default value is @samp{channel}.
@@ -14070,6 +15272,10 @@ linear
 square root, default
 @item cbrt
 cubic root
+@item 4thrt
+4th root
+@item 5thrt
+5th root
 @item log
 logarithmic
 @end table
@@ -14087,17 +15293,41 @@ Set window function.
 
 It accepts the following values:
 @table @samp
-@item none
-No samples pre-processing (do not expect this to be faster)
+@item rect
+@item bartlett
 @item hann
-Hann window
+@item hanning
 @item hamming
-Hamming window
 @item blackman
-Blackman window
+@item welch
+@item flattop
+@item bharris
+@item bnuttall
+@item bhann
+@item sine
+@item nuttall
+@item lanczos
+@item gauss
+@item tukey
 @end table
 
 Default value is @code{hann}.
+
+@item orientation
+Set orientation of time vs frequency axis. Can be @code{vertical} or
+@code{horizontal}. Default is @code{vertical}.
+
+@item overlap
+Set ratio of overlap window. Default value is @code{0}.
+When value is @code{1} overlap is set to recommended size for specific
+window function currently used.
+
+@item gain
+Set scale gain for calculating intensity color values.
+Default value is @code{1}.
+
+@item data
+Set which data to display. Can be @code{magnitude}, default or @code{phase}.
 @end table
 
 The usage is very similar to the showwaves filter; see the examples in that
@@ -14120,6 +15350,130 @@ ffplay -f lavfi 'amovie=input.mp3, asplit [a][out1];
 @end example
 @end itemize
 
+@section showspectrumpic
+
+Convert input audio to a single video frame, representing the audio frequency
+spectrum.
+
+The filter accepts the following options:
+
+@table @option
+@item size, s
+Specify the video size for the output. For the syntax of this option, check the
+@ref{video size syntax,,"Video size" section in the ffmpeg-utils manual,ffmpeg-utils}.
+Default value is @code{4096x2048}.
+
+@item mode
+Specify display mode.
+
+It accepts the following values:
+@table @samp
+@item combined
+all channels are displayed in the same row
+@item separate
+all channels are displayed in separate rows
+@end table
+Default value is @samp{combined}.
+
+@item color
+Specify display color mode.
+
+It accepts the following values:
+@table @samp
+@item channel
+each channel is displayed in a separate color
+@item intensity
+each channel is displayed using the same color scheme
+@item rainbow
+each channel is displayed using the rainbow color scheme
+@item moreland
+each channel is displayed using the moreland color scheme
+@item nebulae
+each channel is displayed using the nebulae color scheme
+@item fire
+each channel is displayed using the fire color scheme
+@item fiery
+each channel is displayed using the fiery color scheme
+@item fruit
+each channel is displayed using the fruit color scheme
+@item cool
+each channel is displayed using the cool color scheme
+@end table
+Default value is @samp{intensity}.
+
+@item scale
+Specify scale used for calculating intensity color values.
+
+It accepts the following values:
+@table @samp
+@item lin
+linear
+@item sqrt
+square root, default
+@item cbrt
+cubic root
+@item 4thrt
+4th root
+@item 5thrt
+5th root
+@item log
+logarithmic
+@end table
+Default value is @samp{log}.
+
+@item saturation
+Set saturation modifier for displayed colors. Negative values provide
+alternative color scheme. @code{0} is no saturation at all.
+Saturation must be in [-10.0, 10.0] range.
+Default value is @code{1}.
+
+@item win_func
+Set window function.
+
+It accepts the following values:
+@table @samp
+@item rect
+@item bartlett
+@item hann
+@item hanning
+@item hamming
+@item blackman
+@item welch
+@item flattop
+@item bharris
+@item bnuttall
+@item bhann
+@item sine
+@item nuttall
+@item lanczos
+@item gauss
+@item tukey
+@end table
+Default value is @code{hann}.
+
+@item orientation
+Set orientation of time vs frequency axis. Can be @code{vertical} or
+@code{horizontal}. Default is @code{vertical}.
+
+@item gain
+Set scale gain for calculating intensity color values.
+Default value is @code{1}.
+
+@item legend
+Draw time and frequency axes and legends. Default is enabled.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Extract an audio spectrogram of a whole audio track
+in a 1024x1024 picture using @command{ffmpeg}:
+@example
+ffmpeg -i audio.flac -lavfi showspectrumpic=s=1024x1024 spectrogram.png
+@end example
+@end itemize
+
 @section showvolume
 
 Convert input audio volume to a video output.
@@ -14134,13 +15488,13 @@ Set video rate.
 Set border width, allowed range is [0, 5]. Default is 1.
 
 @item w
-Set channel width, allowed range is [40, 1080]. Default is 400.
+Set channel width, allowed range is [80, 1080]. Default is 400.
 
 @item h
 Set channel height, allowed range is [1, 100]. Default is 20.
 
 @item f
-Set fade, allowed range is [1, 255]. Default is 20.
+Set fade, allowed range is [0.001, 1]. Default is 0.95.
 
 @item c
 Set volume color expression.
@@ -14157,6 +15511,9 @@ Current channel number, starting from 0.
 
 @item t
 If set, displays channel names. Default is enabled.
+
+@item v
+If set, displays volume values. Default is enabled.
 @end table
 
 @section showwaves
@@ -14204,6 +15561,13 @@ option @var{n}. Default value is "25".
 @item split_channels
 Set if channels should be drawn separately or overlap. Default value is 0.
 
+@item colors
+Set colors separated by '|' which are going to be used for drawing of each channel.
+
+@item scale
+Set amplitude scale. Can be linear @code{lin} or logarithmic @code{log}.
+Default is linear.
+
 @end table
 
 @subsection Examples
@@ -14238,6 +15602,13 @@ Default value is @code{600x240}.
 
 @item split_channels
 Set if channels should be drawn separately or overlap. Default value is 0.
+
+@item colors
+Set colors separated by '|' which are going to be used for drawing of each channel.
+
+@item scale
+Set amplitude scale. Can be linear @code{lin} or logarithmic @code{log}.
+Default is linear.
 @end table
 
 @subsection Examples
@@ -14248,6 +15619,76 @@ Extract a channel split representation of the wave form of a whole audio track
 in a 1024x800 picture using @command{ffmpeg}:
 @example
 ffmpeg -i audio.flac -lavfi showwavespic=split_channels=1:s=1024x800 waveform.png
+@end example
+
+@item
+Colorize the waveform with colorchannelmixer. This example will make
+the waveform a green color approximately RGB(66,217,150). Additional
+channels will be shades of this color.
+@example
+ffmpeg -i audio.mp3 -filter_complex "showwavespic,colorchannelmixer=rr=66/255:gg=217/255:bb=150/255" waveform.png
+@end example
+@end itemize
+
+@section spectrumsynth
+
+Sythesize audio from 2 input video spectrums, first input stream represents
+magnitude across time and second represents phase across time.
+The filter will transform from frequency domain as displayed in videos back
+to time domain as presented in audio output.
+
+This filter is primarly created for reversing processed @ref{showspectrum}
+filter outputs, but can synthesize sound from other spectrograms too.
+But in such case results are going to be poor if the phase data is not
+available, because in such cases phase data need to be recreated, usually
+its just recreated from random noise.
+For best results use gray only output (@code{channel} color mode in
+@ref{showspectrum} filter) and @code{log} scale for magnitude video and
+@code{lin} scale for phase video. To produce phase, for 2nd video, use
+@code{data} option. Inputs videos should generally use @code{fullframe}
+slide mode as that saves resources needed for decoding video.
+
+The filter accepts the following options:
+
+@table @option
+@item sample_rate
+Specify sample rate of output audio, the sample rate of audio from which
+spectrum was generated may differ.
+
+@item channels
+Set number of channels represented in input video spectrums.
+
+@item scale
+Set scale which was used when generating magnitude input spectrum.
+Can be @code{lin} or @code{log}. Default is @code{log}.
+
+@item slide
+Set slide which was used when generating inputs spectrums.
+Can be @code{replace}, @code{scroll}, @code{fullframe} or @code{rscroll}.
+Default is @code{fullframe}.
+
+@item win_func
+Set window function used for resynthesis.
+
+@item overlap
+Set window overlap. In range @code{[0, 1]}. Default is @code{1},
+which means optimal overlap for selected window function will be picked.
+
+@item orientation
+Set orientation of input videos. Can be @code{vertical} or @code{horizontal}.
+Default is @code{vertical}.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+First create magnitude and phase videos from audio, assuming audio is stereo with 44100 sample rate,
+then resynthesize videos back to audio with spectrumsynth:
+@example
+ffmpeg -i input.flac -lavfi showspectrum=mode=separate:scale=log:overlap=0.875:color=channel:slide=fullframe:data=magnitude -an -c:v rawvideo magnitude.nut
+ffmpeg -i input.flac -lavfi showspectrum=mode=separate:scale=lin:overlap=0.875:color=channel:slide=fullframe:data=phase -an -c:v rawvideo phase.nut
+ffmpeg -i magnitude.nut -i phase.nut -lavfi spectrumsynth=channels=2:sample_rate=44100:win_func=hann:overlap=0.875:slide=fullframe output.flac
 @end example
 @end itemize
 

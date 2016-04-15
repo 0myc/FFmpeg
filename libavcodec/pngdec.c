@@ -665,7 +665,10 @@ static int decode_idat_chunk(AVCodecContext *avctx, PNGDecContext *s,
                 break;
 
             default:
-                av_assert0(0);
+                avpriv_request_sample(avctx, "bit depth %d "
+                        "and color type %d with TRNS",
+                        s->bit_depth, s->color_type);
+                return AVERROR_INVALIDDATA;
             }
 
             s->bpp += byte_depth;
@@ -784,7 +787,7 @@ static int decode_trns_chunk(AVCodecContext *avctx, PNGDecContext *s,
 
         for (i = 0; i < length / 2; i++) {
             /* only use the least significant bits */
-            v = bytestream2_get_be16(&s->gb) & ((1 << s->bit_depth) - 1);
+            v = av_mod_uintp2(bytestream2_get_be16(&s->gb), s->bit_depth);
 
             if (s->bit_depth > 8)
                 AV_WB16(&s->transparent_color_be[2 * i], v);
@@ -1523,5 +1526,6 @@ AVCodec ff_png_decoder = {
     .init_thread_copy = ONLY_IF_THREADS_ENABLED(png_dec_init),
     .update_thread_context = ONLY_IF_THREADS_ENABLED(update_thread_context),
     .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS /*| AV_CODEC_CAP_DRAW_HORIZ_BAND*/,
+    .caps_internal  = FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
 };
 #endif

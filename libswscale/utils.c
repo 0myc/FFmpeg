@@ -45,6 +45,7 @@
 #include "libavutil/cpu.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/intreadwrite.h"
+#include "libavutil/libm.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
@@ -227,6 +228,8 @@ static const FormatEntry format_entries[AV_PIX_FMT_NB] = {
     [AV_PIX_FMT_XYZ12BE]     = { 1, 1, 1 },
     [AV_PIX_FMT_XYZ12LE]     = { 1, 1, 1 },
     [AV_PIX_FMT_AYUV64LE]    = { 1, 1},
+    [AV_PIX_FMT_P010LE]      = { 1, 0 },
+    [AV_PIX_FMT_P010BE]      = { 1, 0 },
 };
 
 int sws_isSupportedInput(enum AVPixelFormat pix_fmt)
@@ -386,7 +389,7 @@ static av_cold int initFilter(int16_t **outFilter, int32_t **filterPos,
 
         xDstInSrc = ((dstPos*(int64_t)xInc)>>7) - ((srcPos*0x10000LL)>>7);
         for (i = 0; i < dstW; i++) {
-            int xx = (xDstInSrc - ((int64_t)(filterSize - 2) << 16)) / (1 << 17);
+            int xx = (xDstInSrc - (filterSize - 2) * (1LL<<16)) / (1 << 17);
             int j;
             (*filterPos)[i] = xx;
             for (j = 0; j < filterSize; j++) {
@@ -451,7 +454,7 @@ static av_cold int initFilter(int16_t **outFilter, int32_t **filterPos,
                     coeff *= fone >> (30 + 16);
                 } else if (flags & SWS_GAUSS) {
                     double p = param[0] != SWS_PARAM_DEFAULT ? param[0] : 3.0;
-                    coeff = (pow(2.0, -p * floatd * floatd)) * fone;
+                    coeff = exp2(-p * floatd * floatd) * fone;
                 } else if (flags & SWS_SINC) {
                     coeff = (d ? sin(floatd * M_PI) / (floatd * M_PI) : 1.0) * fone;
                 } else if (flags & SWS_LANCZOS) {
@@ -831,8 +834,6 @@ int sws_setColorspaceDetails(struct SwsContext *c, const int inv_table[4],
     const AVPixFmtDescriptor *desc_dst;
     const AVPixFmtDescriptor *desc_src;
     int need_reinit = 0;
-    memmove(c->srcColorspaceTable, inv_table, sizeof(int) * 4);
-    memmove(c->dstColorspaceTable, table, sizeof(int) * 4);
 
     handle_formats(c);
     desc_dst = av_pix_fmt_desc_get(c->dstFormat);
@@ -843,11 +844,24 @@ int sws_setColorspaceDetails(struct SwsContext *c, const int inv_table[4],
     if(!isYUV(c->srcFormat) && !isGray(c->srcFormat))
         srcRange = 0;
 
+    if (c->srcRange != srcRange ||
+        c->dstRange != dstRange ||
+        c->brightness != brightness ||
+        c->contrast   != contrast ||
+        c->saturation != saturation ||
+        memcmp(c->srcColorspaceTable, inv_table, sizeof(int) * 4) ||
+        memcmp(c->dstColorspaceTable,     table, sizeof(int) * 4)
+    )
+        need_reinit = 1;
+
+    memmove(c->srcColorspaceTable, inv_table, sizeof(int) * 4);
+    memmove(c->dstColorspaceTable, table, sizeof(int) * 4);
+
+
+
     c->brightness = brightness;
     c->contrast   = contrast;
     c->saturation = saturation;
-    if (c->srcRange != srcRange || c->dstRange != dstRange)
-        need_reinit = 1;
     c->srcRange   = srcRange;
     c->dstRange   = dstRange;
 
@@ -861,6 +875,9 @@ int sws_setColorspaceDetails(struct SwsContext *c, const int inv_table[4],
 
     if (c->cascaded_context[c->cascaded_mainindex])
         return sws_setColorspaceDetails(c->cascaded_context[c->cascaded_mainindex],inv_table, srcRange,table, dstRange, brightness,  contrast, saturation);
+
+    if (!need_reinit)
+        return 0;
 
     if ((isYUV(c->dstFormat) || isGray(c->dstFormat)) && (isYUV(c->srcFormat) || isGray(c->srcFormat))) {
         if (!c->cascaded_context[0] &&
@@ -1201,6 +1218,12 @@ av_cold int sws_init_context(SwsContext *c, SwsFilter *srcFilter,
                srcW, srcH, dstW, dstH);
         return AVERROR(EINVAL);
     }
+    if (flags & SWS_FAST_BILINEAR) {
+        if (srcW < 8 || dstW < 8) {
+            flags ^= SWS_FAST_BILINEAR | SWS_BILINEAR;
+            c->flags = flags;
+        }
+    }
 
     if (!dstFilter)
         dstFilter = &dummyFilter;
@@ -1331,15 +1354,16 @@ av_cold int sws_init_context(SwsContext *c, SwsFilter *srcFilter,
         srcFormat != AV_PIX_FMT_GBRP12BE  && srcFormat != AV_PIX_FMT_GBRP12LE &&
         srcFormat != AV_PIX_FMT_GBRP14BE  && srcFormat != AV_PIX_FMT_GBRP14LE &&
         srcFormat != AV_PIX_FMT_GBRP16BE  && srcFormat != AV_PIX_FMT_GBRP16LE &&
+        srcFormat != AV_PIX_FMT_GBRAP16BE  && srcFormat != AV_PIX_FMT_GBRAP16LE &&
         ((dstW >> c->chrDstHSubSample) <= (srcW >> 1) ||
          (flags & SWS_FAST_BILINEAR)))
         c->chrSrcHSubSample = 1;
 
-    // Note the FF_CEIL_RSHIFT is so that we always round toward +inf.
-    c->chrSrcW = FF_CEIL_RSHIFT(srcW, c->chrSrcHSubSample);
-    c->chrSrcH = FF_CEIL_RSHIFT(srcH, c->chrSrcVSubSample);
-    c->chrDstW = FF_CEIL_RSHIFT(dstW, c->chrDstHSubSample);
-    c->chrDstH = FF_CEIL_RSHIFT(dstH, c->chrDstVSubSample);
+    // Note the AV_CEIL_RSHIFT is so that we always round toward +inf.
+    c->chrSrcW = AV_CEIL_RSHIFT(srcW, c->chrSrcHSubSample);
+    c->chrSrcH = AV_CEIL_RSHIFT(srcH, c->chrSrcVSubSample);
+    c->chrDstW = AV_CEIL_RSHIFT(dstW, c->chrDstHSubSample);
+    c->chrDstH = AV_CEIL_RSHIFT(dstH, c->chrDstVSubSample);
 
     FF_ALLOCZ_OR_GOTO(c, c->formatConvBuffer, FFALIGN(srcW*2+78, 16) * 2, fail);
 
@@ -1801,6 +1825,9 @@ fail: // FIXME replace things by appropriate error codes
         int tmpW = sqrt(srcW * (int64_t)dstW);
         int tmpH = sqrt(srcH * (int64_t)dstH);
         enum AVPixelFormat tmpFormat = AV_PIX_FMT_YUV420P;
+
+        if (isALPHA(srcFormat))
+            tmpFormat = AV_PIX_FMT_YUVA420P;
 
         if (srcW*(int64_t)srcH <= 4LL*dstW*dstH)
             return AVERROR(EINVAL);

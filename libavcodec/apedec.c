@@ -247,7 +247,7 @@ static av_cold int ape_decode_init(AVCodecContext *avctx)
     s->compression_level = AV_RL16(avctx->extradata + 2);
     s->flags             = AV_RL16(avctx->extradata + 4);
 
-    av_log(avctx, AV_LOG_DEBUG, "Compression Level: %d - Flags: %d\n",
+    av_log(avctx, AV_LOG_VERBOSE, "Compression Level: %d - Flags: %d\n",
            s->compression_level, s->flags);
     if (s->compression_level % 1000 || s->compression_level > COMPRESSION_LEVEL_INSANE ||
         !s->compression_level ||
@@ -891,6 +891,9 @@ static void long_filter_high_3800(int32_t *buffer, int order, int shift, int len
     int i, j;
     int32_t dotprod, sign;
     int32_t coeffs[256], delay[256];
+
+    if (order >= length)
+        return;
 
     memset(coeffs, 0, order * sizeof(*coeffs));
     for (i = 0; i < order; i++)

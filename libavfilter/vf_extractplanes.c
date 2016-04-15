@@ -176,8 +176,8 @@ static int config_output(AVFilterLink *outlink)
     const int output = outlink->srcpad - ctx->output_pads;
 
     if (s->map[output] == 1 || s->map[output] == 2) {
-        outlink->h = FF_CEIL_RSHIFT(inlink->h, desc->log2_chroma_h);
-        outlink->w = FF_CEIL_RSHIFT(inlink->w, desc->log2_chroma_w);
+        outlink->h = AV_CEIL_RSHIFT(inlink->h, desc->log2_chroma_h);
+        outlink->w = AV_CEIL_RSHIFT(inlink->w, desc->log2_chroma_w);
     }
 
     return 0;
@@ -219,7 +219,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *frame)
         const int idx = s->map[i];
         AVFrame *out;
 
-        if (outlink->closed)
+        if (outlink->status)
             continue;
 
         out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
