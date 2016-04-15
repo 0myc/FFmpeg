@@ -276,6 +276,7 @@ External library support:
   --enable-decklink        enable Blackmagick DeckLink I/O support [no]
   --enable-mmal            enable decoding via MMAL [no]
   --enable-nvenc           enable NVIDIA NVENC support [no]
+  --enable-nvresize        enable NVIDIA CUDA accelerated resizer [no]
   --enable-openal          enable OpenAL 1.1 capture support [no]
   --enable-opencl          enable OpenCL code
   --enable-opengl          enable OpenGL rendering [no]
@@ -1464,6 +1465,7 @@ EXTERNAL_LIBRARY_LIST="
     lzma
     mmal
     nvenc
+    nvresize
     openal
     opencl
     opengl
@@ -5101,7 +5103,8 @@ fi
 frei0r_filter_extralibs='$ldl'
 frei0r_src_filter_extralibs='$ldl'
 ladspa_filter_extralibs='$ldl'
-nvenc_encoder_extralibs='$ldl'
+nvenc_encoder_extralibs='$ldl $lcudautils'
+nvresize_filter_extralibs='$ldl $lcudautils'
 
 if ! disabled network; then
     check_func getaddrinfo $network_extralibs
@@ -5442,9 +5445,11 @@ enabled mmal              && { check_lib interface/mmal/mmal.h mmal_port_connect
                                 check_lib interface/mmal/mmal.h mmal_port_connect ; } ||
                                die "ERROR: mmal not found"; }
 enabled nvenc             && { check_header nvEncodeAPI.h || die "ERROR: nvEncodeAPI.h not found."; } &&
+                             { check_lib 'cudautils.h' init_cuda -lcudautils -ldl || die "ERROR: libcudautils not found."; } &&
                              { check_cpp_condition nvEncodeAPI.h "NVENCAPI_MAJOR_VERSION >= 5" ||
                                die "ERROR: NVENC API version 4 or older is not supported"; } &&
                              { [ $target_os != cygwin ] || die "ERROR: NVENC is not supported on Cygwin currently."; }
+enabled nvresize          && { check_lib 'cudautils.h' init_cuda -lcudautils -ldl || die "ERROR: libcudautils not found."; } &&
 enabled openal            && { { for al_libs in "${OPENAL_LIBS}" "-lopenal" "-lOpenAL32"; do
                                check_lib 'AL/al.h' alGetError "${al_libs}" && break; done } ||
                                die "ERROR: openal not found"; } &&
