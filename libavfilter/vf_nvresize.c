@@ -573,7 +573,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
 
     for (i = 0; i < ctx->nb_outputs; i++) {
         AVFrame *out;
-        if (ctx->outputs[i]->closed)
+        if (ctx->outputs[i]->status)
             continue;
 
         out = ff_get_video_buffer(ctx->outputs[i], ctx->outputs[i]->w, ctx->outputs[i]->h);
